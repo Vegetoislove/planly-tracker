@@ -29,6 +29,7 @@ export const PLAN_DATA: Sprint[] = [
     "name": "Sprint 0: Aptitude Fast-Track (Quants · Reasoning · Verbal)",
     "meta": "•Speedrun Track · Est. 33h · 16 Sessions (@ ~2h/day)",
     "badge": "Placement Special",
+    "isSpecialTrack": true,
     "days": [
       {
         "id": "aptitude-day-1",

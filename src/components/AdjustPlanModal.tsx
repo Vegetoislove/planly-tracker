@@ -38,7 +38,7 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
   isOpen,
   onClose,
   currentTotalDays = 50,
-  startDateStr = "21 Sep 2026",
+  startDateStr = "25 Sep 2026",
   detectedMissedDays = 2,
   autoCascadeEnabled = true,
   onToggleAutoCascade,

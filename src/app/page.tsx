@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { PLAN_DATA } from "@/data/planData";
 import { AppState, Day, Sprint, Task } from "@/lib/types";
-import { loadSavedState, saveStateToStorage, DEFAULT_STATE } from "@/lib/store";
+import { loadSavedState, saveStateToStorage, DEFAULT_STATE, STORAGE_KEY } from "@/lib/store";
 import {
   generate65DayPlan,
   extendPlanDuration,
@@ -60,29 +60,32 @@ export default function DashboardPage() {
     }
   }, [state, isLoaded]);
 
-  // Check on load: if a new day has arrived and auto-cascade is enabled, automatically cascade!
+  // Check on load: if a new day has arrived, auto-cascade is explicitly enabled, and plan has started
   useEffect(() => {
     if (!isLoaded) return;
     const todayFormatted = getTodayFormatted();
     if (
-      state.autoCascadeEnabled !== false &&
+      state.autoCascadeEnabled === true &&
       state.lastAutoCascadeDate !== todayFormatted
     ) {
-      const currentCalDayNumber = getCalendarDayNumber(state.startDateStr || "21 Sep 2026");
-      const targetDay = allDays.find((d) => d.day.globalDay === currentCalDayNumber);
+      const currentCalDayNumber = getCalendarDayNumber(state.startDateStr || "25 Sep 2026");
+      if (currentCalDayNumber <= 0) return; // Plan hasn't started yet (upcoming)
+
+      const targetDay = dsaDays.find((d) => d.day.globalDay === currentCalDayNumber);
+      if (!targetDay) return;
 
       if (missedTasks.length > 0) {
         const { updatedSprints, shiftedCount, newTotalDays } = rippleCascadePlan(
           sprints,
           state.completedTasks,
-          targetDay?.day.id || state.activeDayId,
+          targetDay.day.id || state.activeDayId,
           11
         );
         setState((prev) => ({
           ...prev,
           customSprints: updatedSprints,
-          activeDayId: targetDay?.day.id || prev.activeDayId,
-          openSprintId: targetDay?.sprint.id || prev.openSprintId,
+          activeDayId: targetDay.day.id || prev.activeDayId,
+          openSprintId: targetDay.sprint.id || prev.openSprintId,
           lastAutoCascadeDate: todayFormatted,
         }));
         setAutoCascadeBannerMsg(
@@ -91,12 +94,13 @@ export default function DashboardPage() {
       } else {
         setState((prev) => ({
           ...prev,
-          activeDayId: targetDay?.day.id || prev.activeDayId,
-          openSprintId: targetDay?.sprint.id || prev.openSprintId,
+          activeDayId: targetDay.day.id || prev.activeDayId,
+          openSprintId: targetDay.sprint.id || prev.openSprintId,
           lastAutoCascadeDate: todayFormatted,
         }));
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoaded]); // run on mount when isLoaded flips to true
 
   // Active sprints (custom rebalanced, duration extended, or default 50-day)
@@ -146,14 +150,14 @@ export default function DashboardPage() {
 
   // Dynamically compute completion date based on start date + total DSA days
   const estCompletionDate = useMemo(() => {
-    return calculateCompletionDate(state.startDateStr || "21 Sep 2026", totalDsaDays);
+    return calculateCompletionDate(state.startDateStr || "25 Sep 2026", totalDsaDays);
   }, [state.startDateStr, totalDsaDays]);
 
   // Dynamically compute scheduled date for the currently selected day
   const isSelectedDayAptitude = activeDay.id.startsWith("aptitude-") || activeSprint.id === "sprint-0";
   const scheduledDateForActiveDay = useMemo(() => {
     if (isSelectedDayAptitude) return "Placement Track";
-    return calculateDayDate(state.startDateStr || "21 Sep 2026", activeDay.globalDay);
+    return calculateDayDate(state.startDateStr || "25 Sep 2026", activeDay.globalDay);
   }, [isSelectedDayAptitude, state.startDateStr, activeDay.globalDay]);
 
   // Detect missed days before active day
@@ -324,11 +328,26 @@ export default function DashboardPage() {
     }));
   };
 
-  const handleResetToDefault = () => {
-    setState((prev) => ({
-      ...prev,
+  const handleFullReset = () => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem("planly_next_state_v1");
+      } catch {}
+    }
+    setState({
+      ...DEFAULT_STATE,
+      startDateStr: "25 Sep 2026",
+      activeDayId: "sprint-1-day-1",
+      openSprintId: "sprint-1",
+      completedTasks: {},
+      starredTasks: {},
+      timeSpentByDay: {},
+      taskNotes: {},
       customSprints: undefined,
-    }));
+      autoCascadeEnabled: false,
+    });
+    setAutoCascadeBannerMsg(null);
   };
 
   const handleSaveGeminiKey = (key: string) => {
@@ -382,10 +401,11 @@ export default function DashboardPage() {
       <Header
         state={state}
         planTitle={state.planTitle || "rereckoning"}
-        startDateStr={state.startDateStr || "21 Sep 2026"}
+        startDateStr={state.startDateStr || "25 Sep 2026"}
         onOpenAdjustPlan={() => setAdjustPlanOpen(true)}
         onOpenEmailModal={() => setEmailModalOpen(true)}
         onImportState={handleImportState}
+        onResetAll={handleFullReset}
         onUpdateStartDate={handleUpdateStartDate}
         onRenamePlan={handleRenamePlan}
       />
@@ -504,7 +524,7 @@ export default function DashboardPage() {
             <SprintAccordion
               sprints={sprints}
               activeDayId={state.activeDayId}
-              startDateStr={state.startDateStr || "21 Sep 2026"}
+              startDateStr={state.startDateStr || "25 Sep 2026"}
               openSprintId={state.openSprintId}
               completedTasks={state.completedTasks}
               starredTasks={state.starredTasks || {}}
@@ -539,16 +559,16 @@ export default function DashboardPage() {
         isOpen={adjustPlanOpen}
         onClose={() => setAdjustPlanOpen(false)}
         currentTotalDays={totalDsaDays}
-        startDateStr={state.startDateStr || "21 Sep 2026"}
+        startDateStr={state.startDateStr || "25 Sep 2026"}
         detectedMissedDays={detectedMissedDays}
-        autoCascadeEnabled={state.autoCascadeEnabled !== false}
+        autoCascadeEnabled={!!state.autoCascadeEnabled}
         onToggleAutoCascade={(enabled) =>
           setState((prev) => ({ ...prev, autoCascadeEnabled: enabled }))
         }
         onExtendDuration={handleExtendDuration}
         onRippleCascade={handleRippleCascade}
         onApply65DaySchedule={handleApply65DaySchedule}
-        onResetToDefault={handleResetToDefault}
+        onResetToDefault={handleFullReset}
         onSaveGeminiKey={handleSaveGeminiKey}
         savedGeminiKey={state.geminiApiKey || ""}
         activeSprintName={activeSprint.name}

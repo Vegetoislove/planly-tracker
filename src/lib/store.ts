@@ -1,7 +1,7 @@
 import { AppState, Sprint } from "./types";
 import { PLAN_DATA } from "@/data/planData";
 
-export const STORAGE_KEY = "planly_next_state_v1";
+export const STORAGE_KEY = "planly_next_state_v2";
 
 export const DEFAULT_STATE: AppState = {
   activeDayId: "sprint-1-day-1",
@@ -9,16 +9,21 @@ export const DEFAULT_STATE: AppState = {
   starredTasks: {},
   timeSpentByDay: {},
   taskNotes: {},
-  openSprintId: "sprint-0",
+  openSprintId: "sprint-1",
   remindersActive: false,
   planTitle: "rereckoning",
-  startDateStr: "21 Sep 2026",
-  autoCascadeEnabled: true,
+  startDateStr: "25 Sep 2026",
+  autoCascadeEnabled: false,
 };
 
 export function loadSavedState(): AppState {
   if (typeof window === "undefined") return DEFAULT_STATE;
   try {
+    // Purge old v1 state to prevent stale schedule corruption
+    try {
+      localStorage.removeItem("planly_next_state_v1");
+    } catch {}
+
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
     const parsed = JSON.parse(raw);
@@ -34,6 +39,11 @@ export function loadSavedState(): AppState {
       }
     }
     
+    // Ensure startDateStr defaults to 25 Sep 2026 if it was previously set to 21 Sep 2026
+    if (parsed.startDateStr === "21 Sep 2026") {
+      parsed.startDateStr = "25 Sep 2026";
+    }
+
     return { ...DEFAULT_STATE, ...parsed };
   } catch (err) {
     console.error("Error loading localStorage state:", err);

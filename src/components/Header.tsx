@@ -13,6 +13,7 @@ import {
   Upload,
   Check,
   X,
+  RotateCcw,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -22,6 +23,7 @@ interface HeaderProps {
   onOpenAdjustPlan: () => void;
   onOpenEmailModal: () => void;
   onImportState: (newState: AppState) => void;
+  onResetAll?: () => void;
   onUpdateStartDate?: (newStartDateStr: string) => void;
   onRenamePlan?: (newTitle: string) => void;
 }
@@ -29,10 +31,11 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   state,
   planTitle = "rereckoning",
-  startDateStr = "21 Sep 2026",
+  startDateStr = "25 Sep 2026",
   onOpenAdjustPlan,
   onOpenEmailModal,
   onImportState,
+  onResetAll,
   onUpdateStartDate,
   onRenamePlan,
 }) => {
@@ -228,6 +231,23 @@ export const Header: React.FC<HeaderProps> = ({
               {state.remindersActive ? "Reminders: Active" : "Reminders"}
             </span>
           </button>
+
+          {/* Reset All Progress Button */}
+          {onResetAll && (
+            <button
+              type="button"
+              onClick={() => {
+                if (window.confirm("⚠️ Reset everything?\n\nThis will clear all completed tasks, timer history, and reset your plan to start fresh from 25 Sep 2026.")) {
+                  onResetAll();
+                }
+              }}
+              title="Reset all progress and start fresh from 25 Sep 2026"
+              className="flex items-center gap-1.5 py-2 px-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-bold transition shadow-sm"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">Reset</span>
+            </button>
+          )}
 
           {/* Backup Export / Import */}
           <div className="flex items-center gap-1 border-l border-surface-border/60 pl-2">

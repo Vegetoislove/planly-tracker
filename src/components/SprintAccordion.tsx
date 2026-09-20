@@ -36,7 +36,7 @@ interface SprintAccordionProps {
 export const SprintAccordion: React.FC<SprintAccordionProps> = ({
   sprints,
   activeDayId,
-  startDateStr = "21 Sep 2026",
+  startDateStr = "25 Sep 2026",
   openSprintId,
   completedTasks,
   starredTasks,

@@ -21,9 +21,9 @@ const MONTHS = [
  * Parses a date string like "21 Sep 2026" or "2026-09-21" or ISO string into a Date object.
  */
 export function parseDateString(dateStr: string): Date {
-  if (!dateStr) return new Date(2026, 8, 21); // Default: 21 Sep 2026
+  if (!dateStr) return new Date(2026, 8, 25); // Default: 25 Sep 2026
 
-  // Check if format is "DD Mon YYYY" (e.g. "21 Sep 2026")
+  // Check if format is "DD Mon YYYY" (e.g. "25 Sep 2026")
   const parts = dateStr.trim().split(/\s+/);
   if (parts.length === 3) {
     const day = parseInt(parts[0], 10);
@@ -48,7 +48,7 @@ export function parseDateString(dateStr: string): Date {
   }
 
   const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? new Date(2026, 8, 21) : d;
+  return isNaN(d.getTime()) ? new Date(2026, 8, 25) : d;
 }
 
 /**
@@ -124,8 +124,10 @@ export function getCalendarDayNumber(startDateStr: string): number {
   const diffMs = nowZero.getTime() - startZero.getTime();
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
 
-  // If today is on or after start date, day number is diffDays + 1
-  return Math.max(1, diffDays + 1);
+  // If today is before start date, plan has not started yet (day 0 / upcoming)
+  if (diffDays < 0) return 0;
+
+  return diffDays + 1;
 }
 
 /**

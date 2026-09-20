@@ -5,10 +5,13 @@ export const STORAGE_KEY = "planly_next_state_v1";
 export const DEFAULT_STATE: AppState = {
   activeDayId: "sprint-1-day-1",
   completedTasks: {},
+  starredTasks: {},
   timeSpentByDay: {},
   taskNotes: {},
   openSprintId: "sprint-1",
   remindersActive: false,
+  planTitle: "rereckoning",
+  startDateStr: "21 Sep 2026",
 };
 
 export function loadSavedState(): AppState {

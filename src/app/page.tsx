@@ -2,18 +2,23 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { PLAN_DATA } from "@/data/planData";
-import { AppState, Day } from "@/lib/types";
+import { AppState, Day, Sprint, Task } from "@/lib/types";
 import { loadSavedState, saveStateToStorage, DEFAULT_STATE } from "@/lib/store";
+import { autoRebalancePlan, generate65DayPlan } from "@/lib/rebalance";
 import { Header } from "@/components/Header";
-import { Sidebar } from "@/components/Sidebar";
-import { DayWorkspace } from "@/components/DayWorkspace";
-import { StudyTimer } from "@/components/StudyTimer";
+import { StatsOverview } from "@/components/StatsOverview";
+import { SprintAccordion } from "@/components/SprintAccordion";
+import { RightRailPreview } from "@/components/RightRailPreview";
+import { AdjustPlanModal } from "@/components/AdjustPlanModal";
 import { EmailModal } from "@/components/EmailModal";
+import { RevisionModal } from "@/components/RevisionModal";
 
 export default function DashboardPage() {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [state, setState] = useState<AppState>(DEFAULT_STATE);
+  const [adjustPlanOpen, setAdjustPlanOpen] = useState<boolean>(false);
   const [emailModalOpen, setEmailModalOpen] = useState<boolean>(false);
+  const [revisionModalOpen, setRevisionModalOpen] = useState<boolean>(false);
 
   // Load from localStorage on client mount
   useEffect(() => {
@@ -29,28 +34,55 @@ export default function DashboardPage() {
     }
   }, [state, isLoaded]);
 
-  // Flatten all days for sequential navigation
+  // Active sprints (custom rebalanced or default 50-day)
+  const sprints: Sprint[] = useMemo(() => {
+    return state.customSprints && state.customSprints.length > 0
+      ? state.customSprints
+      : PLAN_DATA;
+  }, [state.customSprints]);
+
+  // Flatten all days for sequential tracking
   const allDays = useMemo(() => {
-    const list: { day: Day; sprintName: string; sprintId: string }[] = [];
-    PLAN_DATA.forEach((sprint) => {
+    const list: { day: Day; sprint: Sprint }[] = [];
+    sprints.forEach((sprint) => {
       sprint.days.forEach((day) => {
-        list.push({ day, sprintName: sprint.name, sprintId: sprint.id });
+        list.push({ day, sprint });
       });
     });
     return list;
-  }, []);
+  }, [sprints]);
 
-  // Calculate totals
-  const totalTasks = useMemo(() => {
-    return PLAN_DATA.reduce(
-      (acc, s) => acc + s.days.reduce((dAcc, d) => dAcc + d.tasks.length, 0),
-      0
-    );
-  }, []);
+  // Find active day and sprint
+  const activeDayIndex = useMemo(() => {
+    const idx = allDays.findIndex((item) => item.day.id === state.activeDayId);
+    return idx >= 0 ? idx : 0;
+  }, [allDays, state.activeDayId]);
 
-  const completedTasksCount = useMemo(() => {
-    return Object.keys(state.completedTasks).length;
-  }, [state.completedTasks]);
+  const activeDayInfo = allDays[activeDayIndex] || allDays[0] || {
+    day: sprints[0].days[0],
+    sprint: sprints[0],
+  };
+  const activeDay = activeDayInfo.day;
+  const activeSprint = activeDayInfo.sprint;
+
+  // Calculate statistics for StatsOverview
+  const totalDays = allDays.length;
+
+  const completedDays = useMemo(() => {
+    return allDays.filter((item) => {
+      const tasks = item.day.tasks;
+      if (tasks.length === 0) return false;
+      return tasks.every((t) => !!state.completedTasks[t.id]);
+    }).length;
+  }, [allDays, state.completedTasks]);
+
+  const completedSprintsCount = useMemo(() => {
+    return sprints.filter((sprint) => {
+      const allSprintTasks = sprint.days.flatMap((d) => d.tasks);
+      if (allSprintTasks.length === 0) return false;
+      return allSprintTasks.every((t) => !!state.completedTasks[t.id]);
+    }).length;
+  }, [sprints, state.completedTasks]);
 
   const totalSecondsStudied = useMemo(() => {
     return Object.values(state.timeSpentByDay).reduce(
@@ -59,23 +91,34 @@ export default function DashboardPage() {
     );
   }, [state.timeSpentByDay]);
 
-  // Current active day object
-  const currentDayIndex = allDays.findIndex(
-    (item) => item.day.id === state.activeDayId
-  );
-  const activeDayInfo =
-    currentDayIndex >= 0 ? allDays[currentDayIndex] : allDays[0];
-  const activeDay = activeDayInfo.day;
-  const activeSprintName = activeDayInfo.sprintName;
-  const activeSprint =
-    PLAN_DATA.find((s) => s.id === activeDayInfo.sprintId) || PLAN_DATA[0];
+  const starredTasksCount = useMemo(() => {
+    return Object.keys(state.starredTasks || {}).length;
+  }, [state.starredTasks]);
+
+  // Backlog tasks from days prior to activeDay (missed tasks)
+  const missedTasks = useMemo(() => {
+    const missed: (Task & { originDay: string; originSprint: string })[] = [];
+    for (let i = 0; i < activeDayIndex; i++) {
+      const dayRef = allDays[i];
+      dayRef.day.tasks.forEach((t) => {
+        if (!state.completedTasks[t.id]) {
+          missed.push({
+            ...t,
+            originDay: dayRef.day.name,
+            originSprint: dayRef.sprint.name,
+          });
+        }
+      });
+    }
+    return missed;
+  }, [allDays, activeDayIndex, state.completedTasks]);
 
   // Handlers
-  const handleSelectDay = (dayId: string, sprintId: string) => {
+  const handleSelectDay = (day: Day, sprint: Sprint) => {
     setState((prev) => ({
       ...prev,
-      activeDayId: dayId,
-      openSprintId: sprintId,
+      activeDayId: day.id,
+      openSprintId: sprint.id,
     }));
   };
 
@@ -98,14 +141,16 @@ export default function DashboardPage() {
     });
   };
 
-  const handleUpdateNote = (taskId: string, note: string) => {
-    setState((prev) => ({
-      ...prev,
-      taskNotes: {
-        ...prev.taskNotes,
-        [taskId]: note,
-      },
-    }));
+  const handleToggleStar = (taskId: string) => {
+    setState((prev) => {
+      const updated = { ...(prev.starredTasks || {}) };
+      if (updated[taskId]) {
+        delete updated[taskId];
+      } else {
+        updated[taskId] = true;
+      }
+      return { ...prev, starredTasks: updated };
+    });
   };
 
   const handleLogTime = (dayId: string, secondsToAdd: number) => {
@@ -121,20 +166,6 @@ export default function DashboardPage() {
     });
   };
 
-  const handlePrevDay = () => {
-    if (currentDayIndex > 0) {
-      const prev = allDays[currentDayIndex - 1];
-      handleSelectDay(prev.day.id, prev.sprintId);
-    }
-  };
-
-  const handleNextDay = () => {
-    if (currentDayIndex < allDays.length - 1) {
-      const next = allDays[currentDayIndex + 1];
-      handleSelectDay(next.day.id, next.sprintId);
-    }
-  };
-
   const handleSaveEmail = (email: string, active: boolean) => {
     setState((prev) => ({
       ...prev,
@@ -147,14 +178,48 @@ export default function DashboardPage() {
     setState(newState);
   };
 
-  // Prevent hydration layout shift
+  const handleRebalanceBacklog = () => {
+    const { updatedSprints } = autoRebalancePlan(
+      sprints,
+      state.completedTasks,
+      state.activeDayId
+    );
+    setState((prev) => ({
+      ...prev,
+      customSprints: updatedSprints,
+    }));
+  };
+
+  const handleApply65DaySchedule = () => {
+    const stretched = generate65DayPlan();
+    setState((prev) => ({
+      ...prev,
+      customSprints: stretched,
+    }));
+  };
+
+  const handleResetToDefault = () => {
+    setState((prev) => ({
+      ...prev,
+      customSprints: undefined,
+    }));
+  };
+
+  const handleSaveGeminiKey = (key: string) => {
+    setState((prev) => ({
+      ...prev,
+      geminiApiKey: key,
+    }));
+  };
+
+  // Prevent hydration flicker
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-surface-bg flex items-center justify-center text-slate-400">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
           <span className="text-xs font-semibold tracking-wider uppercase text-slate-500">
-            Loading Planly Tracker...
+            Loading TakeUforward Planly...
           </span>
         </div>
       </div>
@@ -165,64 +230,95 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-surface-bg text-slate-100">
-      {/* Top Header */}
+      {/* 1. Authentic Header */}
       <Header
         state={state}
-        totalTasks={totalTasks}
-        completedTasksCount={completedTasksCount}
-        totalSecondsStudied={totalSecondsStudied}
+        planTitle={state.planTitle || "rereckoning"}
+        startDateStr={state.startDateStr || "21 Sep 2026"}
+        onOpenAdjustPlan={() => setAdjustPlanOpen(true)}
         onOpenEmailModal={() => setEmailModalOpen(true)}
         onImportState={handleImportState}
       />
 
-      {/* Main Grid: Sidebar (4 cols) & Workspace (8 cols) */}
-      <div className="max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start">
-        {/* Sidebar */}
-        <div className="lg:col-span-4 sticky top-20">
-          <Sidebar
-            sprints={PLAN_DATA}
-            activeDayId={state.activeDayId}
-            openSprintId={state.openSprintId}
-            completedTasks={state.completedTasks}
-            onSelectDay={handleSelectDay}
-            onToggleSprint={handleToggleSprint}
-          />
-        </div>
+      {/* Main Container */}
+      <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
+        
+        {/* 2. Top Stats Overview (4 TakeUforward Cards) */}
+        <StatsOverview
+          completedDays={completedDays}
+          totalDays={totalDays}
+          totalSecondsStudied={totalSecondsStudied}
+          completedSprintsCount={completedSprintsCount}
+          totalSprintsCount={sprints.length}
+          estCompletionDate="9 Nov 2026"
+        />
 
-        {/* Day Workspace with Integrated Timer */}
-        <div className="lg:col-span-8 min-w-0">
-          <DayWorkspace
-            day={activeDay}
-            sprintName={activeSprintName}
-            sprintDays={activeSprint.days}
-            loggedSecondsToday={loggedSecondsToday}
-            completedTasks={state.completedTasks}
-            taskNotes={state.taskNotes}
-            onToggleTask={handleToggleTask}
-            onUpdateNote={handleUpdateNote}
-            onSelectDay={(dayId) => handleSelectDay(dayId, activeSprint.id)}
-            onPrevDay={handlePrevDay}
-            onNextDay={handleNextDay}
-            hasPrevDay={currentDayIndex > 0}
-            hasNextDay={currentDayIndex < allDays.length - 1}
-            timerComponent={
-              <StudyTimer
-                activeDayId={activeDay.id}
-                activeDayName={activeDay.name}
-                loggedSecondsToday={loggedSecondsToday}
-                onLogTime={handleLogTime}
-              />
-            }
-          />
-        </div>
-      </div>
+        {/* 3. TakeUforward Two-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          
+          {/* Left Column: Sprints Accordion Tree (7 cols on large screens) */}
+          <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-4">
+            <SprintAccordion
+              sprints={sprints}
+              activeDayId={state.activeDayId}
+              openSprintId={state.openSprintId}
+              completedTasks={state.completedTasks}
+              starredTasks={state.starredTasks || {}}
+              timeSpentByDay={state.timeSpentByDay}
+              onSelectDay={handleSelectDay}
+              onToggleSprint={handleToggleSprint}
+              onToggleTask={handleToggleTask}
+              onToggleStar={handleToggleStar}
+            />
+          </div>
 
-      {/* Email Subscription Modal */}
+          {/* Right Column: Preview Rail with Revision List, Plan Preview & Stopwatch (5 cols) */}
+          <div className="lg:col-span-5 xl:col-span-4 sticky top-20">
+            <RightRailPreview
+              activeDay={activeDay}
+              activeSprintName={activeSprint.name}
+              starredTasksCount={starredTasksCount}
+              scheduledDateStr={state.startDateStr || "21 Sep 2026"}
+              loggedSecondsToday={loggedSecondsToday}
+              completedTasks={state.completedTasks}
+              onLogTime={handleLogTime}
+              onViewRevisionList={() => setRevisionModalOpen(true)}
+            />
+          </div>
+        </div>
+      </main>
+
+      {/* Adjust Plan Modal */}
+      <AdjustPlanModal
+        isOpen={adjustPlanOpen}
+        onClose={() => setAdjustPlanOpen(false)}
+        onRebalanceBacklog={handleRebalanceBacklog}
+        onApply65DaySchedule={handleApply65DaySchedule}
+        onResetToDefault={handleResetToDefault}
+        onSaveGeminiKey={handleSaveGeminiKey}
+        savedGeminiKey={state.geminiApiKey || ""}
+        activeSprintName={activeSprint.name}
+        activeDayName={activeDay.name}
+        missedTasks={missedTasks}
+      />
+
+      {/* Email Reminders Modal */}
       <EmailModal
         isOpen={emailModalOpen}
         initialEmail={state.userEmail || ""}
         onClose={() => setEmailModalOpen(false)}
         onSaveEmail={handleSaveEmail}
+      />
+
+      {/* Revision List Modal */}
+      <RevisionModal
+        isOpen={revisionModalOpen}
+        onClose={() => setRevisionModalOpen(false)}
+        sprints={sprints}
+        starredTasks={state.starredTasks || {}}
+        completedTasks={state.completedTasks}
+        onToggleStar={handleToggleStar}
+        onToggleTask={handleToggleTask}
       />
     </div>
   );

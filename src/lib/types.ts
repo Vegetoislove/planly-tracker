@@ -22,9 +22,14 @@ export interface Sprint {
 export interface AppState {
   activeDayId: string;
   completedTasks: Record<string, boolean>;
+  starredTasks: Record<string, boolean>;
   timeSpentByDay: Record<string, number>; // seconds
   taskNotes: Record<string, string>;
   openSprintId: string | null;
   userEmail?: string;
   remindersActive?: boolean;
+  geminiApiKey?: string;
+  customSprints?: Sprint[];
+  planTitle?: string;
+  startDateStr?: string;
 }

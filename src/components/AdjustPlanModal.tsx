@@ -1,11 +1,27 @@
 "use client";
 
-import React, { useState } from "react";
-import { X, Sparkles, Sliders, RotateCcw, Check, Brain } from "lucide-react";
+import React, { useState, useMemo } from "react";
+import { calculateCompletionDate } from "@/lib/dateUtils";
+import {
+  X,
+  Sparkles,
+  Sliders,
+  RotateCcw,
+  Check,
+  Brain,
+  CalendarPlus,
+  Plus,
+  Minus,
+  ArrowRight,
+} from "lucide-react";
 
 interface AdjustPlanModalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentTotalDays: number;
+  startDateStr: string;
+  detectedMissedDays: number;
+  onExtendDuration: (missedDaysToAdd: number) => void;
   onRebalanceBacklog: () => void;
   onApply65DaySchedule: () => void;
   onResetToDefault: () => void;
@@ -19,6 +35,10 @@ interface AdjustPlanModalProps {
 export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
   isOpen,
   onClose,
+  currentTotalDays = 50,
+  startDateStr = "21 Sep 2026",
+  detectedMissedDays = 2,
+  onExtendDuration,
   onRebalanceBacklog,
   onApply65DaySchedule,
   onResetToDefault,
@@ -34,6 +54,21 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
 
+  // Missed days counter state (defaults to detected or 2)
+  const [missedDaysToAdd, setMissedDaysToAdd] = useState<number>(
+    detectedMissedDays > 0 ? detectedMissedDays : 2
+  );
+
+  // Projected new duration & completion date
+  const projectedTotalDays = currentTotalDays + missedDaysToAdd;
+  const currentCompletionDate = useMemo(() => {
+    return calculateCompletionDate(startDateStr, currentTotalDays);
+  }, [startDateStr, currentTotalDays]);
+
+  const projectedCompletionDate = useMemo(() => {
+    return calculateCompletionDate(startDateStr, projectedTotalDays);
+  }, [startDateStr, projectedTotalDays]);
+
   if (!isOpen) return null;
 
   const handleSaveKey = (e: React.FormEvent) => {
@@ -45,9 +80,20 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
     setTimeout(() => setStatusMsg(null), 2500);
   };
 
+  const handleTriggerExtend = () => {
+    if (missedDaysToAdd <= 0) return;
+    onExtendDuration(missedDaysToAdd);
+    setStatusMsg(
+      `🎉 Extended! Now a ${projectedTotalDays}-day plan ending on ${projectedCompletionDate}.`
+    );
+    setTimeout(() => {
+      onClose();
+    }, 1500);
+  };
+
   const handleTriggerRebalance = () => {
     onRebalanceBacklog();
-    setStatusMsg("⚡ Roadmap auto-adjusted! Unfinished tasks redistributed across upcoming days.");
+    setStatusMsg("⚡ Roadmap auto-adjusted! Incomplete tasks redistributed across upcoming days.");
     setTimeout(() => {
       onClose();
     }, 1500);
@@ -121,9 +167,9 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
             <Sliders className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-bold text-lg text-white">Adjust Plan & Rebalance</h3>
+            <h3 className="font-bold text-lg text-white">Adjust Plan & Duration</h3>
             <p className="text-xs text-slate-400">
-              Adapt your roadmap when you miss a day or want to change pacing
+              Extend plan duration when you miss days or need more breathing room
             </p>
           </div>
         </div>
@@ -134,35 +180,128 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
           </div>
         )}
 
-        {/* Option 1: Auto-Rebalance Unfinished Tasks */}
-        <div className="bg-surface-subtle border border-surface-border rounded-2xl p-4 flex flex-col gap-2">
+        {/* 1. PRIMARY FEATURE: Missed Days & Duration Extension */}
+        <div className="bg-brand-950/30 border-2 border-brand-500/40 rounded-2xl p-4 flex flex-col gap-3 shadow-lg shadow-brand-500/5">
           <div className="flex items-center justify-between">
-            <span className="font-bold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-              <span>Catch-Up Auto Rebalancer</span>
+            <span className="font-bold text-xs uppercase tracking-wider text-brand-400 flex items-center gap-1.5">
+              <CalendarPlus className="w-4 h-4" />
+              <span>Missed Days & Duration Extension</span>
+            </span>
+            <span className="text-[11px] bg-brand-500/20 text-brand-300 font-semibold px-2 py-0.5 rounded-full border border-brand-500/30">
+              Active: {currentTotalDays} Days
             </span>
           </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Missed study days? Increase the duration so your schedule expands and shifts the estimated completion date forward, without cramming extra tasks into existing days.
+          </p>
+
+          {/* Stepper + Quick Pickers */}
+          <div className="bg-surface-subtle border border-surface-border rounded-xl p-3 flex flex-col gap-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-300">
+                Missed days to add:
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setMissedDaysToAdd((prev) => Math.max(1, prev - 1))}
+                  className="w-7 h-7 rounded-lg bg-surface-card hover:bg-surface-border border border-surface-border text-slate-200 flex items-center justify-center transition"
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                <span className="w-10 text-center font-mono font-bold text-base text-white">
+                  +{missedDaysToAdd}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setMissedDaysToAdd((prev) => prev + 1)}
+                  className="w-7 h-7 rounded-lg bg-surface-card hover:bg-surface-border border border-surface-border text-slate-200 flex items-center justify-center transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Add Presets */}
+            <div className="flex items-center gap-1.5 pt-1 border-t border-surface-border/50">
+              <span className="text-[10px] text-slate-500 font-semibold mr-1">Presets:</span>
+              {[1, 2, 3, 5, 7].map((num) => (
+                <button
+                  key={num}
+                  type="button"
+                  onClick={() => setMissedDaysToAdd(num)}
+                  className={`px-2 py-0.5 rounded-md text-[11px] font-semibold transition border ${
+                    missedDaysToAdd === num
+                      ? "bg-brand-500/30 text-brand-300 border-brand-500/50"
+                      : "bg-surface-card hover:bg-surface-border border-surface-border text-slate-400 hover:text-white"
+                  }`}
+                >
+                  +{num}d
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Before & After Comparison */}
+          <div className="bg-surface-card/80 border border-surface-border rounded-xl p-3 flex items-center justify-between text-xs">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[10px] text-slate-500 font-semibold uppercase">Current Schedule</span>
+              <span className="font-bold text-slate-300">{currentTotalDays} Days</span>
+              <span className="text-[11px] text-slate-400">Ends: {currentCompletionDate}</span>
+            </div>
+
+            <ArrowRight className="w-4 h-4 text-brand-400" />
+
+            <div className="flex flex-col gap-0.5 text-right">
+              <span className="text-[10px] text-emerald-400 font-semibold uppercase">Adjusted Schedule</span>
+              <span className="font-black text-emerald-400 text-sm">
+                {projectedTotalDays} Days Plan
+              </span>
+              <span className="text-[11px] font-bold text-emerald-300">
+                Ends: {projectedCompletionDate}
+              </span>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <button
+            type="button"
+            onClick={handleTriggerExtend}
+            className="w-full py-2.5 px-4 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-brand-600/25"
+          >
+            <CalendarPlus className="w-4 h-4" />
+            <span>Apply +{missedDaysToAdd} Missed Days (Become {projectedTotalDays}-Day Plan)</span>
+          </button>
+        </div>
+
+        {/* 2. Catch-Up Auto Rebalancer (Redistribute Past Tasks) */}
+        <div className="bg-surface-subtle border border-surface-border rounded-2xl p-4 flex flex-col gap-2">
+          <span className="font-bold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+            <span>Catch-Up Problem Rebalancer</span>
+          </span>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Missed a day or fell behind? This redistributes any incomplete tasks from past days across upcoming sessions so your daily hours stay balanced (~4h to 4.5h).
+            Distributes any incomplete problems from past sessions into your upcoming study days so you remain on track without skipping core topics.
           </p>
           <button
             type="button"
             onClick={handleTriggerRebalance}
-            className="mt-1 py-2 px-4 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-brand-600/20"
+            className="mt-1 py-2 px-4 bg-surface-card hover:bg-surface-border border border-surface-border text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
           >
-            <Sparkles className="w-4 h-4" />
-            <span>Auto-Rebalance Roadmap Now</span>
+            <Sparkles className="w-4 h-4 text-brand-400" />
+            <span>Redistribute Incomplete Tasks</span>
           </button>
         </div>
 
-        {/* Option 2: 65-Day Schedule (Extra Time for Graphs & DP) */}
+        {/* 3. 65-Day Mastery Track (DP & Graphs Stretch) */}
         <div className="bg-surface-subtle border border-surface-border rounded-2xl p-4 flex flex-col gap-2">
           <span className="font-bold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
             <Brain className="w-3.5 h-3.5 text-amber-400" />
             <span>Pacing: 65-Day Mastery Track</span>
           </span>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Stretches the roadmap to 65 days with dedicated deep-dive days for <strong>Dynamic Programming</strong> and <strong>Graphs</strong>, reducing daily study to a healthy ~3.5h – 4h.
+            Stretches the roadmap to 65 days with dedicated deep-dive days for <strong>Dynamic Programming</strong> and <strong>Graphs</strong>, reducing daily study to a healthy ~3.5h.
           </p>
           <button
             type="button"
@@ -173,14 +312,14 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
           </button>
         </div>
 
-        {/* Option 3: Gemini AI API Key */}
+        {/* 4. Google Gemini AI Integration */}
         <div className="bg-surface-subtle border border-surface-border rounded-2xl p-4 flex flex-col gap-2.5">
           <span className="font-bold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
             <span>Google Gemini AI Integration</span>
           </span>
           <p className="text-xs text-slate-400 leading-relaxed">
-            Provide your Gemini API key to enable AI roadmap guidance & catch-up strategy:
+            Provide your Gemini API key to enable AI catch-up recommendations:
           </p>
           <form onSubmit={handleSaveKey} className="flex gap-2">
             <input

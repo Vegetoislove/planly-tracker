@@ -4,7 +4,13 @@ import React, { useState, useEffect, useMemo } from "react";
 import { PLAN_DATA } from "@/data/planData";
 import { AppState, Day, Sprint, Task } from "@/lib/types";
 import { loadSavedState, saveStateToStorage, DEFAULT_STATE } from "@/lib/store";
-import { autoRebalancePlan, generate65DayPlan } from "@/lib/rebalance";
+import {
+  autoRebalancePlan,
+  generate65DayPlan,
+  extendPlanDuration,
+  detectMissedDays,
+} from "@/lib/rebalance";
+import { calculateCompletionDate, calculateDayDate } from "@/lib/dateUtils";
 import { Header } from "@/components/Header";
 import { StatsOverview } from "@/components/StatsOverview";
 import { SprintAccordion } from "@/components/SprintAccordion";
@@ -34,7 +40,7 @@ export default function DashboardPage() {
     }
   }, [state, isLoaded]);
 
-  // Active sprints (custom rebalanced or default 50-day)
+  // Active sprints (custom rebalanced, duration extended, or default 50-day)
   const sprints: Sprint[] = useMemo(() => {
     return state.customSprints && state.customSprints.length > 0
       ? state.customSprints
@@ -67,6 +73,21 @@ export default function DashboardPage() {
 
   // Calculate statistics for StatsOverview
   const totalDays = allDays.length;
+
+  // Dynamically compute completion date based on start date + total days
+  const estCompletionDate = useMemo(() => {
+    return calculateCompletionDate(state.startDateStr || "21 Sep 2026", totalDays);
+  }, [state.startDateStr, totalDays]);
+
+  // Dynamically compute scheduled date for the currently selected day
+  const scheduledDateForActiveDay = useMemo(() => {
+    return calculateDayDate(state.startDateStr || "21 Sep 2026", activeDay.globalDay);
+  }, [state.startDateStr, activeDay.globalDay]);
+
+  // Detect missed days before active day
+  const detectedMissedDays = useMemo(() => {
+    return detectMissedDays(sprints, state.completedTasks, state.activeDayId);
+  }, [sprints, state.completedTasks, state.activeDayId]);
 
   const completedDays = useMemo(() => {
     return allDays.filter((item) => {
@@ -178,6 +199,20 @@ export default function DashboardPage() {
     setState(newState);
   };
 
+  // ⚡ Primary requirement: Missed Days Duration Extension
+  const handleExtendDuration = (missedDaysToAdd: number) => {
+    const { updatedSprints } = extendPlanDuration(
+      sprints,
+      missedDaysToAdd,
+      state.completedTasks,
+      state.activeDayId
+    );
+    setState((prev) => ({
+      ...prev,
+      customSprints: updatedSprints,
+    }));
+  };
+
   const handleRebalanceBacklog = () => {
     const { updatedSprints } = autoRebalancePlan(
       sprints,
@@ -212,6 +247,20 @@ export default function DashboardPage() {
     }));
   };
 
+  const handleUpdateStartDate = (newStartDateStr: string) => {
+    setState((prev) => ({
+      ...prev,
+      startDateStr: newStartDateStr,
+    }));
+  };
+
+  const handleRenamePlan = (newTitle: string) => {
+    setState((prev) => ({
+      ...prev,
+      planTitle: newTitle,
+    }));
+  };
+
   // Prevent hydration flicker
   if (!isLoaded) {
     return (
@@ -238,19 +287,21 @@ export default function DashboardPage() {
         onOpenAdjustPlan={() => setAdjustPlanOpen(true)}
         onOpenEmailModal={() => setEmailModalOpen(true)}
         onImportState={handleImportState}
+        onUpdateStartDate={handleUpdateStartDate}
+        onRenamePlan={handleRenamePlan}
       />
 
       {/* Main Container */}
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
         
-        {/* 2. Top Stats Overview (4 TakeUforward Cards) */}
+        {/* 2. Top Stats Overview (4 TakeUforward Cards with Dynamic Completion Date & Duration) */}
         <StatsOverview
           completedDays={completedDays}
           totalDays={totalDays}
           totalSecondsStudied={totalSecondsStudied}
           completedSprintsCount={completedSprintsCount}
           totalSprintsCount={sprints.length}
-          estCompletionDate="9 Nov 2026"
+          estCompletionDate={estCompletionDate}
         />
 
         {/* 3. TakeUforward Two-Column Layout */}
@@ -278,7 +329,7 @@ export default function DashboardPage() {
               activeDay={activeDay}
               activeSprintName={activeSprint.name}
               starredTasksCount={starredTasksCount}
-              scheduledDateStr={state.startDateStr || "21 Sep 2026"}
+              scheduledDateStr={scheduledDateForActiveDay}
               loggedSecondsToday={loggedSecondsToday}
               completedTasks={state.completedTasks}
               onLogTime={handleLogTime}
@@ -288,10 +339,14 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Adjust Plan Modal */}
+      {/* Adjust Plan Modal with Duration Extension */}
       <AdjustPlanModal
         isOpen={adjustPlanOpen}
         onClose={() => setAdjustPlanOpen(false)}
+        currentTotalDays={totalDays}
+        startDateStr={state.startDateStr || "21 Sep 2026"}
+        detectedMissedDays={detectedMissedDays}
+        onExtendDuration={handleExtendDuration}
         onRebalanceBacklog={handleRebalanceBacklog}
         onApply65DaySchedule={handleApply65DaySchedule}
         onResetToDefault={handleResetToDefault}

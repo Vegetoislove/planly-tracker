@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import { AppState } from "@/lib/types";
+import { parseDateString, formatDateInputValue, formatDateDisplay } from "@/lib/dateUtils";
 import {
   CalendarDays,
   Calendar,
@@ -10,6 +11,8 @@ import {
   Bell,
   Download,
   Upload,
+  Check,
+  X,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -19,6 +22,8 @@ interface HeaderProps {
   onOpenAdjustPlan: () => void;
   onOpenEmailModal: () => void;
   onImportState: (newState: AppState) => void;
+  onUpdateStartDate?: (newStartDateStr: string) => void;
+  onRenamePlan?: (newTitle: string) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -28,8 +33,16 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenAdjustPlan,
   onOpenEmailModal,
   onImportState,
+  onUpdateStartDate,
+  onRenamePlan,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEditingDate, setIsEditingDate] = useState<boolean>(false);
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
+  const [tempTitle, setTempTitle] = useState<string>(planTitle);
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    return formatDateInputValue(parseDateString(startDateStr));
+  });
 
   const handleExport = () => {
     const dataStr =
@@ -63,6 +76,26 @@ export const Header: React.FC<HeaderProps> = ({
     reader.readAsText(file);
   };
 
+  const handleSaveDate = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDate) return;
+    const dateObj = new Date(selectedDate + "T00:00:00");
+    const formatted = formatDateDisplay(dateObj);
+    if (onUpdateStartDate) {
+      onUpdateStartDate(formatted);
+    }
+    setIsEditingDate(false);
+  };
+
+  const handleSaveTitle = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!tempTitle.trim()) return;
+    if (onRenamePlan) {
+      onRenamePlan(tempTitle.trim());
+    }
+    setIsEditingTitle(false);
+  };
+
   return (
     <header className="border-b border-surface-border bg-surface-card/90 backdrop-blur sticky top-0 z-40 px-4 lg:px-8 py-3.5">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -74,26 +107,87 @@ export const Header: React.FC<HeaderProps> = ({
           </p>
 
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-black text-white tracking-tight leading-none">
-              {planTitle}
-            </h1>
-            <button
-              type="button"
-              title="Rename plan"
-              className="p-1 text-slate-500 hover:text-white rounded-lg transition"
-            >
-              <SquarePen className="w-4 h-4" />
-            </button>
+            {isEditingTitle ? (
+              <form onSubmit={handleSaveTitle} className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={tempTitle}
+                  onChange={(e) => setTempTitle(e.target.value)}
+                  className="bg-surface-subtle border border-brand-500 rounded-lg px-2 py-0.5 text-lg font-bold text-white focus:outline-none"
+                  autoFocus
+                />
+                <button
+                  type="submit"
+                  className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingTitle(false)}
+                  className="p-1 text-slate-400 hover:text-white rounded-md"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            ) : (
+              <>
+                <h1 className="text-2xl font-black text-white tracking-tight leading-none">
+                  {planTitle}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempTitle(planTitle);
+                    setIsEditingTitle(true);
+                  }}
+                  title="Rename plan"
+                  className="p-1 text-slate-500 hover:text-white rounded-lg transition"
+                >
+                  <SquarePen className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 mt-1">
-            <button
-              type="button"
-              className="flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-surface-subtle hover:bg-surface-border border border-surface-border text-slate-300 transition"
-            >
-              <CalendarDays className="w-3.5 h-3.5" />
-              <span>Edit start date</span>
-            </button>
+            {isEditingDate ? (
+              <form onSubmit={handleSaveDate} className="flex items-center gap-1.5">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="bg-surface-subtle border border-brand-500 rounded-lg px-2 py-0.5 text-xs text-white focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  className="p-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-md"
+                  title="Save Date"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingDate(false)}
+                  className="p-1 text-slate-400 hover:text-white rounded-md"
+                  title="Cancel"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDate(formatDateInputValue(parseDateString(startDateStr)));
+                  setIsEditingDate(true);
+                }}
+                className="flex items-center gap-1.5 py-1 px-2.5 rounded-lg bg-surface-subtle hover:bg-surface-border border border-surface-border text-slate-300 transition"
+              >
+                <CalendarDays className="w-3.5 h-3.5 text-brand-400" />
+                <span>Edit start date</span>
+              </button>
+            )}
 
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-brand-500/10 text-brand-400 border border-brand-500/20">
               <span className="w-1.5 h-1.5 rounded-full bg-brand-400" />
@@ -101,8 +195,8 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
 
             <span className="flex items-center gap-1.5 text-slate-400">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Scheduled: {startDateStr}</span>
+              <Calendar className="w-3.5 h-3.5 text-slate-500" />
+              <span>Scheduled: <strong className="text-slate-200">{startDateStr}</strong></span>
             </span>
           </div>
         </div>

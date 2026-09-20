@@ -197,3 +197,135 @@ export function generate65DayPlan(): Sprint[] {
 
   return stretchedSprints;
 }
+
+/**
+ * Detects how many past days before activeDayId have 0 tasks completed
+ */
+export function detectMissedDays(
+  sprints: Sprint[],
+  completedTasks: Record<string, boolean>,
+  activeDayId: string
+): number {
+  const flatDays: Day[] = [];
+  sprints.forEach((s) => s.days.forEach((d) => flatDays.push(d)));
+
+  const activeIdx = flatDays.findIndex((d) => d.id === activeDayId);
+  if (activeIdx <= 0) return 0;
+
+  let missed = 0;
+  for (let i = 0; i < activeIdx; i++) {
+    const day = flatDays[i];
+    const completedCount = day.tasks.filter((t) => completedTasks[t.id]).length;
+    if (completedCount === 0 && day.tasks.length > 0) {
+      missed++;
+    }
+  }
+  return missed;
+}
+
+/**
+ * Extends the plan duration by adding `missedDaysCount` buffer/catch-up days
+ * into the roadmap.
+ * E.g., a 50-day plan with 2 missed days becomes a 52-day plan!
+ * If there are incomplete tasks from past days, they get placed into these newly
+ * created days so the user has dedicated sessions to finish them without cramming.
+ */
+export function extendPlanDuration(
+  currentSprints: Sprint[],
+  missedDaysCount: number,
+  completedTasks: Record<string, boolean>,
+  activeDayId?: string
+): { updatedSprints: Sprint[]; newTotalDays: number } {
+  if (missedDaysCount <= 0) {
+    const totalDays = currentSprints.reduce((acc, s) => acc + s.days.length, 0);
+    return { updatedSprints: currentSprints, newTotalDays: totalDays };
+  }
+
+  const sprints: Sprint[] = JSON.parse(JSON.stringify(currentSprints));
+
+  // 1. Gather any incomplete tasks from past days
+  const flatDays: { sprintIdx: number; day: Day }[] = [];
+  sprints.forEach((sprint, sprintIdx) => {
+    sprint.days.forEach((day) => {
+      flatDays.push({ sprintIdx, day });
+    });
+  });
+
+  const activeIdx = activeDayId
+    ? flatDays.findIndex((d) => d.day.id === activeDayId)
+    : -1;
+
+  const pastIncompleteTasks: Task[] = [];
+  if (activeIdx > 0) {
+    for (let i = 0; i < activeIdx; i++) {
+      const day = flatDays[i].day;
+      day.tasks.forEach((t) => {
+        if (!completedTasks[t.id]) {
+          pastIncompleteTasks.push(t);
+        }
+      });
+    }
+  }
+
+  // Target sprint to insert extension days: the sprint containing active day, or the last sprint
+  let targetSprintIdx = sprints.length - 1;
+  if (activeIdx >= 0 && flatDays[activeIdx]) {
+    targetSprintIdx = flatDays[activeIdx].sprintIdx;
+  }
+  const targetSprint = sprints[targetSprintIdx];
+
+  // Distribute past tasks into the new extension days
+  const tasksPerDay = Math.max(1, Math.ceil(pastIncompleteTasks.length / missedDaysCount));
+
+  for (let i = 0; i < missedDaysCount; i++) {
+    const chunk = pastIncompleteTasks.slice(i * tasksPerDay, (i + 1) * tasksPerDay);
+    const extensionDayId = `catchup-day-${Date.now()}-${i + 1}`;
+
+    targetSprint.days.push({
+      id: extensionDayId,
+      globalDay: 0, // will be recalculated below
+      name: `Catch-Up & Practice (Day +${i + 1})`,
+      meta:
+        chunk.length > 0
+          ? `${Math.max(2, Math.round((chunk.length * 25) / 60))}h planned`
+          : "3h planned",
+      tasks:
+        chunk.length > 0
+          ? chunk.map((t) => ({ ...t, title: `🔄 ${t.title}` }))
+          : [
+              {
+                id: `${extensionDayId}-review-1`,
+                title: "Missed Day Catch-Up & Problem Consolidation",
+                time: "45 min",
+              },
+              {
+                id: `${extensionDayId}-review-2`,
+                title: "Core Striver Roadmap Revision & Weak Topic Practice",
+                time: "60 min",
+              },
+            ],
+    });
+  }
+
+  // Renumber all global days across all sprints consecutively
+  let currentGlobalDay = 0;
+  sprints.forEach((sprint) => {
+    sprint.days.forEach((day) => {
+      currentGlobalDay++;
+      day.globalDay = currentGlobalDay;
+      if (!day.name.startsWith("Day ")) {
+        day.name = `Day ${currentGlobalDay} - ${day.name}`;
+      } else {
+        day.name = day.name.replace(/Day \d+/, `Day ${currentGlobalDay}`);
+      }
+    });
+
+    const sprintHours = Math.floor(
+      sprint.days.reduce((acc, d) => acc + d.tasks.length * 22, 0) / 60
+    );
+    sprint.meta = `Est. ${sprintHours}h · Upcoming`;
+  });
+
+  return { updatedSprints: sprints, newTotalDays: currentGlobalDay };
+}
+

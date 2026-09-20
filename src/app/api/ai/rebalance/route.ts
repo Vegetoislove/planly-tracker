@@ -23,7 +23,7 @@ ${(missedTasks || []).slice(0, 15).map((t: { title: string; time?: string }) => 
 Provide a concise, encouraging 3-step action plan on how they should pace their study sessions over the next 3 days to catch up without burning out. Keep it formatted with bullet points and realistic time estimates.`;
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${key}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

@@ -10,6 +10,7 @@ import {
   Circle,
   Star,
   ExternalLink,
+  Lightbulb,
 } from "lucide-react";
 
 interface SprintAccordionProps {
@@ -23,6 +24,7 @@ interface SprintAccordionProps {
   onToggleSprint: (sprintId: string) => void;
   onToggleTask: (taskId: string) => void;
   onToggleStar: (taskId: string) => void;
+  onOpenAiHint?: (problemTitle: string, sprintName: string) => void;
 }
 
 export const SprintAccordion: React.FC<SprintAccordionProps> = ({
@@ -36,6 +38,7 @@ export const SprintAccordion: React.FC<SprintAccordionProps> = ({
   onToggleSprint,
   onToggleTask,
   onToggleStar,
+  onOpenAiHint,
 }) => {
   const [openDayId, setOpenDayId] = useState<string | null>(activeDayId);
 
@@ -235,19 +238,36 @@ export const SprintAccordion: React.FC<SprintAccordionProps> = ({
                                     href={searchUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className={`truncate cursor-pointer hover:text-brand-400 hover:underline ${
+                                    className={`truncate cursor-pointer hover:text-brand-400 hover:underline flex items-center gap-1.5 ${
                                       isTaskDone
                                         ? "line-through text-slate-500 font-normal"
                                         : "text-slate-200 font-medium"
                                     }`}
                                     title="Search problem / solution"
                                   >
-                                    {task.title}
+                                    <span className="truncate">{task.title.replace(/^🔄\s*/, "")}</span>
+                                    {task.title.includes("🔄") && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 shrink-0">
+                                        Shifted
+                                      </span>
+                                    )}
                                   </a>
                                 </div>
 
-                                {/* Right: Star for revision & Estimated time */}
-                                <div className="flex items-center gap-2.5 shrink-0">
+                                {/* Right: AI Hint, Star for revision, Estimated time, Search */}
+                                <div className="flex items-center gap-2 shrink-0">
+                                  {onOpenAiHint && (
+                                    <button
+                                      type="button"
+                                      onClick={() => onOpenAiHint(task.title, sprint.name)}
+                                      title="Ask Gemini for Intuition & Approach Hint"
+                                      className="p-1 rounded text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition flex items-center gap-1"
+                                    >
+                                      <Lightbulb className="w-3.5 h-3.5 fill-purple-400/20" />
+                                      <span className="text-[10px] font-bold hidden sm:inline">Hint</span>
+                                    </button>
+                                  )}
+
                                   <button
                                     type="button"
                                     onClick={() => onToggleStar(task.id)}

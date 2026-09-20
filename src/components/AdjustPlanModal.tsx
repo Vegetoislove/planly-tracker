@@ -22,7 +22,7 @@ interface AdjustPlanModalProps {
   startDateStr: string;
   detectedMissedDays: number;
   onExtendDuration: (missedDaysToAdd: number) => void;
-  onRebalanceBacklog: () => void;
+  onRippleCascade?: (maxTasksPerDay: number) => void;
   onApply65DaySchedule: () => void;
   onResetToDefault: () => void;
   onSaveGeminiKey: (key: string) => void;
@@ -39,7 +39,7 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
   startDateStr = "21 Sep 2026",
   detectedMissedDays = 2,
   onExtendDuration,
-  onRebalanceBacklog,
+  onRippleCascade,
   onApply65DaySchedule,
   onResetToDefault,
   onSaveGeminiKey,
@@ -53,6 +53,7 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
   const [aiAdvice, setAiAdvice] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
+  const [dailyCapacity, setDailyCapacity] = useState<number>(11);
 
   // Missed days counter state (defaults to detected or 2)
   const [missedDaysToAdd, setMissedDaysToAdd] = useState<number>(
@@ -91,12 +92,16 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
     }, 1500);
   };
 
-  const handleTriggerRebalance = () => {
-    onRebalanceBacklog();
-    setStatusMsg("⚡ Roadmap auto-adjusted! Incomplete tasks redistributed across upcoming days.");
-    setTimeout(() => {
-      onClose();
-    }, 1500);
+  const handleTriggerRipple = () => {
+    if (onRippleCascade) {
+      onRippleCascade(dailyCapacity);
+      setStatusMsg(
+        `⚡ Conveyor-belt ripple applied! Daily load capped at ${dailyCapacity} tasks/day and schedule cascaded downstream.`
+      );
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    }
   };
 
   const handleTrigger65Days = () => {
@@ -275,22 +280,50 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
           </button>
         </div>
 
-        {/* 2. Catch-Up Auto Rebalancer (Redistribute Past Tasks) */}
-        <div className="bg-surface-subtle border border-surface-border rounded-2xl p-4 flex flex-col gap-2">
-          <span className="font-bold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-brand-400" />
-            <span>Catch-Up Problem Rebalancer</span>
-          </span>
+        {/* 2. Conveyor-Belt / Ripple Cascade Rebalancer */}
+        <div className="bg-surface-subtle border border-surface-border rounded-2xl p-4 flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+              <span>Conveyor-Belt Task Ripple Shifter</span>
+            </span>
+            <span className="text-[11px] text-amber-400 font-semibold bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+              {missedTasks.length} Incomplete
+            </span>
+          </div>
+
           <p className="text-xs text-slate-400 leading-relaxed">
-            Distributes any incomplete problems from past sessions into your upcoming study days so you remain on track without skipping core topics.
+            Completed only 5 of 12 tasks on Day 1? This moves the remaining 7 tasks into Day 2, caps Day 2 at your target load (e.g. 11 tasks / ~4.5h), and pushes the rest into Day 3, cascading downstream and naturally expanding the plan!
           </p>
+
+          {/* Daily Capacity Selector */}
+          <div className="flex items-center justify-between bg-surface-card border border-surface-border rounded-xl p-2.5 text-xs">
+            <span className="text-slate-400 font-semibold">Max Daily Load:</span>
+            <div className="flex items-center gap-1.5">
+              {[9, 10, 11, 12, 14].map((cap) => (
+                <button
+                  key={cap}
+                  type="button"
+                  onClick={() => setDailyCapacity(cap)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition border ${
+                    dailyCapacity === cap
+                      ? "bg-brand-600 text-white border-brand-500"
+                      : "bg-surface-subtle hover:bg-surface-border text-slate-400 border-surface-border"
+                  }`}
+                >
+                  {cap} tasks {cap === 11 ? "(~4.5h)" : ""}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <button
             type="button"
-            onClick={handleTriggerRebalance}
-            className="mt-1 py-2 px-4 bg-surface-card hover:bg-surface-border border border-surface-border text-slate-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2"
+            onClick={handleTriggerRipple}
+            className="w-full py-2 px-4 bg-surface-card hover:bg-surface-border border border-brand-500/40 text-brand-300 hover:text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm"
           >
             <Sparkles className="w-4 h-4 text-brand-400" />
-            <span>Redistribute Incomplete Tasks</span>
+            <span>Cascade Incomplete Tasks Downstream (Cap at {dailyCapacity}/day)</span>
           </button>
         </div>
 

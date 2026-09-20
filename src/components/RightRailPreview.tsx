@@ -13,7 +13,7 @@ import {
   RotateCcw,
   Save,
   Plus,
-  ExternalLink,
+  Lightbulb,
 } from "lucide-react";
 
 interface RightRailPreviewProps {
@@ -25,6 +25,7 @@ interface RightRailPreviewProps {
   completedTasks: Record<string, boolean>;
   onLogTime: (dayId: string, secondsToAdd: number) => void;
   onViewRevisionList: () => void;
+  onOpenAiHint?: (problemTitle: string, sprintName: string) => void;
 }
 
 export const RightRailPreview: React.FC<RightRailPreviewProps> = ({
@@ -36,6 +37,7 @@ export const RightRailPreview: React.FC<RightRailPreviewProps> = ({
   completedTasks,
   onLogTime,
   onViewRevisionList,
+  onOpenAiHint,
 }) => {
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [sessionSeconds, setSessionSeconds] = useState<number>(0);
@@ -235,24 +237,43 @@ export const RightRailPreview: React.FC<RightRailPreviewProps> = ({
             return (
               <div
                 key={task.id}
-                className="flex items-start justify-between gap-3 py-2 text-xs"
+                className="flex items-center justify-between gap-2 py-2 text-xs"
               >
-                <a
-                  href={searchUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`min-w-0 break-words leading-snug hover:text-brand-400 hover:underline flex items-center gap-1 ${
-                    isDone
-                      ? "line-through text-slate-500 font-normal"
-                      : "text-slate-300 font-medium"
-                  }`}
-                >
-                  <span className="truncate">{task.title}</span>
-                  <ExternalLink className="w-3 h-3 text-slate-600 shrink-0" />
-                </a>
-                <span className="shrink-0 text-slate-500 font-mono text-[11px]">
-                  {task.time?.replace("Est.", "").trim() || "15m"}
-                </span>
+                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                  <a
+                    href={searchUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`min-w-0 truncate leading-snug hover:text-brand-400 hover:underline flex items-center gap-1.5 ${
+                      isDone
+                        ? "line-through text-slate-500 font-normal"
+                        : "text-slate-300 font-medium"
+                    }`}
+                  >
+                    <span className="truncate">{task.title.replace(/^🔄\s*/, "")}</span>
+                    {task.title.includes("🔄") && (
+                      <span className="px-1 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 shrink-0">
+                        Shifted
+                      </span>
+                    )}
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {onOpenAiHint && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenAiHint(task.title, activeSprintName)}
+                      title="AI Hint"
+                      className="p-1 rounded text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 transition"
+                    >
+                      <Lightbulb className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                  <span className="shrink-0 text-slate-500 font-mono text-[11px]">
+                    {task.time?.replace("Est.", "").trim() || "15m"}
+                  </span>
+                </div>
               </div>
             );
           })}

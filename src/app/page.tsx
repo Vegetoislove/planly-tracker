@@ -5,11 +5,11 @@ import { PLAN_DATA } from "@/data/planData";
 import { AppState, Day, Sprint, Task } from "@/lib/types";
 import { loadSavedState, saveStateToStorage, DEFAULT_STATE } from "@/lib/store";
 import {
-  autoRebalancePlan,
   generate65DayPlan,
   extendPlanDuration,
   detectMissedDays,
 } from "@/lib/rebalance";
+import { rippleCascadePlan } from "@/lib/rippleCascade";
 import { calculateCompletionDate, calculateDayDate } from "@/lib/dateUtils";
 import { Header } from "@/components/Header";
 import { StatsOverview } from "@/components/StatsOverview";
@@ -18,6 +18,8 @@ import { RightRailPreview } from "@/components/RightRailPreview";
 import { AdjustPlanModal } from "@/components/AdjustPlanModal";
 import { EmailModal } from "@/components/EmailModal";
 import { RevisionModal } from "@/components/RevisionModal";
+import { AiHintModal } from "@/components/AiHintModal";
+import { Sparkles, ArrowRight } from "lucide-react";
 
 export default function DashboardPage() {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
@@ -25,6 +27,18 @@ export default function DashboardPage() {
   const [adjustPlanOpen, setAdjustPlanOpen] = useState<boolean>(false);
   const [emailModalOpen, setEmailModalOpen] = useState<boolean>(false);
   const [revisionModalOpen, setRevisionModalOpen] = useState<boolean>(false);
+  const [checkInDismissed, setCheckInDismissed] = useState<boolean>(false);
+
+  // Gemini AI Hint Modal State
+  const [hintModalState, setHintModalState] = useState<{
+    isOpen: boolean;
+    problemTitle: string;
+    sprintName: string;
+  }>({
+    isOpen: false,
+    problemTitle: "",
+    sprintName: "",
+  });
 
   // Load from localStorage on client mount
   useEffect(() => {
@@ -213,16 +227,21 @@ export default function DashboardPage() {
     }));
   };
 
-  const handleRebalanceBacklog = () => {
-    const { updatedSprints } = autoRebalancePlan(
+  // ⚡ Conveyor-Belt Ripple Cascade (rolls unfinished tasks forward & repacks ~11/day)
+  const handleRippleCascade = (maxTasksPerDay: number = 11) => {
+    const { updatedSprints, shiftedCount, newTotalDays } = rippleCascadePlan(
       sprints,
       state.completedTasks,
-      state.activeDayId
+      state.activeDayId,
+      maxTasksPerDay
     );
     setState((prev) => ({
       ...prev,
       customSprints: updatedSprints,
     }));
+    alert(
+      `⚡ Conveyor-belt ripple applied!\nShifted ${shiftedCount} incomplete tasks downstream.\nDaily load capped at ${maxTasksPerDay} tasks/day.\nTotal plan is now ${newTotalDays} days.`
+    );
   };
 
   const handleApply65DaySchedule = () => {
@@ -261,6 +280,14 @@ export default function DashboardPage() {
     }));
   };
 
+  const handleOpenAiHint = (problemTitle: string, sprintName: string) => {
+    setHintModalState({
+      isOpen: true,
+      problemTitle,
+      sprintName,
+    });
+  };
+
   // Prevent hydration flicker
   if (!isLoaded) {
     return (
@@ -294,6 +321,46 @@ export default function DashboardPage() {
       {/* Main Container */}
       <main className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6">
         
+        {/* Morning Check-In Alert Banner (When Unfinished Past Tasks Exist) */}
+        {missedTasks.length > 0 && !checkInDismissed && (
+          <div className="bg-gradient-to-r from-brand-950/60 via-purple-950/40 to-surface-card border border-brand-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center shrink-0 border border-brand-500/30">
+                <Sparkles className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-xs font-bold text-white flex items-center gap-2">
+                  <span>Daily Progress Check:</span>
+                  <span className="text-amber-400 bg-amber-500/15 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-amber-500/30">
+                    {missedTasks.length} uncompleted tasks from past days
+                  </span>
+                </p>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Would you like to ripple-cascade these tasks into upcoming days to maintain a healthy ~4.5h daily study load?
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => handleRippleCascade(11)}
+                className="py-1.5 px-3.5 bg-brand-600 hover:bg-brand-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-md shadow-brand-600/20"
+              >
+                <span>⚡ Ripple-Shift Downstream</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setCheckInDismissed(true)}
+                className="py-1.5 px-3 text-xs text-slate-400 hover:text-white rounded-xl transition"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* 2. Top Stats Overview (4 TakeUforward Cards with Dynamic Completion Date & Duration) */}
         <StatsOverview
           completedDays={completedDays}
@@ -320,6 +387,7 @@ export default function DashboardPage() {
               onToggleSprint={handleToggleSprint}
               onToggleTask={handleToggleTask}
               onToggleStar={handleToggleStar}
+              onOpenAiHint={handleOpenAiHint}
             />
           </div>
 
@@ -334,12 +402,13 @@ export default function DashboardPage() {
               completedTasks={state.completedTasks}
               onLogTime={handleLogTime}
               onViewRevisionList={() => setRevisionModalOpen(true)}
+              onOpenAiHint={handleOpenAiHint}
             />
           </div>
         </div>
       </main>
 
-      {/* Adjust Plan Modal with Duration Extension */}
+      {/* Adjust Plan Modal with Duration Extension & Ripple Cascade */}
       <AdjustPlanModal
         isOpen={adjustPlanOpen}
         onClose={() => setAdjustPlanOpen(false)}
@@ -347,7 +416,7 @@ export default function DashboardPage() {
         startDateStr={state.startDateStr || "21 Sep 2026"}
         detectedMissedDays={detectedMissedDays}
         onExtendDuration={handleExtendDuration}
-        onRebalanceBacklog={handleRebalanceBacklog}
+        onRippleCascade={handleRippleCascade}
         onApply65DaySchedule={handleApply65DaySchedule}
         onResetToDefault={handleResetToDefault}
         onSaveGeminiKey={handleSaveGeminiKey}
@@ -374,6 +443,15 @@ export default function DashboardPage() {
         completedTasks={state.completedTasks}
         onToggleStar={handleToggleStar}
         onToggleTask={handleToggleTask}
+      />
+
+      {/* 💡 Gemini AI Hint & Intuition Modal */}
+      <AiHintModal
+        isOpen={hintModalState.isOpen}
+        onClose={() => setHintModalState((prev) => ({ ...prev, isOpen: false }))}
+        problemTitle={hintModalState.problemTitle}
+        sprintName={hintModalState.sprintName}
+        geminiApiKey={state.geminiApiKey}
       />
     </div>
   );

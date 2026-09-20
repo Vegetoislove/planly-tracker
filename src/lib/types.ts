@@ -32,4 +32,6 @@ export interface AppState {
   customSprints?: Sprint[];
   planTitle?: string;
   startDateStr?: string;
+  autoCascadeEnabled?: boolean;
+  lastAutoCascadeDate?: string;
 }

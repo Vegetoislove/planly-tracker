@@ -12,6 +12,7 @@ export const DEFAULT_STATE: AppState = {
   remindersActive: false,
   planTitle: "rereckoning",
   startDateStr: "21 Sep 2026",
+  autoCascadeEnabled: true,
 };
 
 export function loadSavedState(): AppState {

@@ -10,7 +10,12 @@ import {
   detectMissedDays,
 } from "@/lib/rebalance";
 import { rippleCascadePlan } from "@/lib/rippleCascade";
-import { calculateCompletionDate, calculateDayDate } from "@/lib/dateUtils";
+import {
+  calculateCompletionDate,
+  calculateDayDate,
+  getTodayFormatted,
+  getCalendarDayNumber,
+} from "@/lib/dateUtils";
 import { Header } from "@/components/Header";
 import { StatsOverview } from "@/components/StatsOverview";
 import { SprintAccordion } from "@/components/SprintAccordion";
@@ -19,7 +24,7 @@ import { AdjustPlanModal } from "@/components/AdjustPlanModal";
 import { EmailModal } from "@/components/EmailModal";
 import { RevisionModal } from "@/components/RevisionModal";
 import { AiHintModal } from "@/components/AiHintModal";
-import { Sparkles, ArrowRight } from "lucide-react";
+import { Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
 
 export default function DashboardPage() {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
@@ -28,6 +33,7 @@ export default function DashboardPage() {
   const [emailModalOpen, setEmailModalOpen] = useState<boolean>(false);
   const [revisionModalOpen, setRevisionModalOpen] = useState<boolean>(false);
   const [checkInDismissed, setCheckInDismissed] = useState<boolean>(false);
+  const [autoCascadeBannerMsg, setAutoCascadeBannerMsg] = useState<string | null>(null);
 
   // Gemini AI Hint Modal State
   const [hintModalState, setHintModalState] = useState<{
@@ -53,6 +59,45 @@ export default function DashboardPage() {
       saveStateToStorage(state);
     }
   }, [state, isLoaded]);
+
+  // Check on load: if a new day has arrived and auto-cascade is enabled, automatically cascade!
+  useEffect(() => {
+    if (!isLoaded) return;
+    const todayFormatted = getTodayFormatted();
+    if (
+      state.autoCascadeEnabled !== false &&
+      state.lastAutoCascadeDate !== todayFormatted
+    ) {
+      const currentCalDayNumber = getCalendarDayNumber(state.startDateStr || "21 Sep 2026");
+      const targetDay = allDays.find((d) => d.day.globalDay === currentCalDayNumber);
+
+      if (missedTasks.length > 0) {
+        const { updatedSprints, shiftedCount, newTotalDays } = rippleCascadePlan(
+          sprints,
+          state.completedTasks,
+          targetDay?.day.id || state.activeDayId,
+          11
+        );
+        setState((prev) => ({
+          ...prev,
+          customSprints: updatedSprints,
+          activeDayId: targetDay?.day.id || prev.activeDayId,
+          openSprintId: targetDay?.sprint.id || prev.openSprintId,
+          lastAutoCascadeDate: todayFormatted,
+        }));
+        setAutoCascadeBannerMsg(
+          `✨ Automatically Adjusted for Today (${todayFormatted}): ${shiftedCount} unfinished tasks from past days were automatically cascaded into today and future sessions. Plan is now ${newTotalDays} days.`
+        );
+      } else {
+        setState((prev) => ({
+          ...prev,
+          activeDayId: targetDay?.day.id || prev.activeDayId,
+          openSprintId: targetDay?.sprint.id || prev.openSprintId,
+          lastAutoCascadeDate: todayFormatted,
+        }));
+      }
+    }
+  }, [isLoaded]); // run on mount when isLoaded flips to true
 
   // Active sprints (custom rebalanced, duration extended, or default 50-day)
   const sprints: Sprint[] = useMemo(() => {
@@ -361,6 +406,25 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Auto-Cascade Notification Banner */}
+        {autoCascadeBannerMsg && (
+          <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 flex items-center justify-between gap-4 shadow-xl">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span className="text-xs text-emerald-200 font-medium leading-relaxed">
+                {autoCascadeBannerMsg}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAutoCascadeBannerMsg(null)}
+              className="text-xs font-bold text-emerald-400 hover:text-white px-2.5 py-1 rounded-lg hover:bg-emerald-500/20 transition"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
+
         {/* 2. Top Stats Overview (4 TakeUforward Cards with Dynamic Completion Date & Duration) */}
         <StatsOverview
           completedDays={completedDays}
@@ -379,6 +443,7 @@ export default function DashboardPage() {
             <SprintAccordion
               sprints={sprints}
               activeDayId={state.activeDayId}
+              startDateStr={state.startDateStr || "21 Sep 2026"}
               openSprintId={state.openSprintId}
               completedTasks={state.completedTasks}
               starredTasks={state.starredTasks || {}}
@@ -415,6 +480,10 @@ export default function DashboardPage() {
         currentTotalDays={totalDays}
         startDateStr={state.startDateStr || "21 Sep 2026"}
         detectedMissedDays={detectedMissedDays}
+        autoCascadeEnabled={state.autoCascadeEnabled !== false}
+        onToggleAutoCascade={(enabled) =>
+          setState((prev) => ({ ...prev, autoCascadeEnabled: enabled }))
+        }
         onExtendDuration={handleExtendDuration}
         onRippleCascade={handleRippleCascade}
         onApply65DaySchedule={handleApply65DaySchedule}

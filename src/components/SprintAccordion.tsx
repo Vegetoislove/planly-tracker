@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Sprint, Day } from "@/lib/types";
 import { formatHoursMinutes } from "@/lib/store";
+import { calculateDayDate, isDateToday, isDatePast } from "@/lib/dateUtils";
 import {
   ChevronRight,
   ChevronDown,
@@ -16,6 +17,7 @@ import {
 interface SprintAccordionProps {
   sprints: Sprint[];
   activeDayId: string;
+  startDateStr?: string;
   openSprintId: string | null;
   completedTasks: Record<string, boolean>;
   starredTasks: Record<string, boolean>;
@@ -30,6 +32,7 @@ interface SprintAccordionProps {
 export const SprintAccordion: React.FC<SprintAccordionProps> = ({
   sprints,
   activeDayId,
+  startDateStr = "21 Sep 2026",
   openSprintId,
   completedTasks,
   starredTasks,
@@ -146,18 +149,20 @@ export const SprintAccordion: React.FC<SprintAccordionProps> = ({
                   const isDayOpened = openDayId === day.id;
 
                   const daySeconds = timeSpentByDay[day.id] || 0;
-                  const dayDoneCount = day.tasks.filter(
-                    (t) => completedTasks[t.id]
-                  ).length;
-                  const isDayComplete =
-                    day.tasks.length > 0 && dayDoneCount === day.tasks.length;
+                  const dayDoneCount = day.tasks.filter((t) => completedTasks[t.id]).length;
+                  const isDayComplete = day.tasks.length > 0 && dayDoneCount === day.tasks.length;
+                  const dayDateStr = calculateDayDate(startDateStr, day.globalDay);
+                  const isDayToday = isDateToday(dayDateStr);
+                  const isDayPast = isDatePast(dayDateStr);
 
                   return (
                     <div
                       key={day.id}
                       className={`border rounded-xl transition-all overflow-hidden ${
                         isDaySelected
-                          ? "border-brand-500/40 bg-surface-card"
+                          ? "border-brand-500/40 bg-surface-card shadow-md"
+                          : isDayToday
+                          ? "border-brand-500/30 bg-surface-card/90"
                           : "border-surface-border/50 bg-surface-card/60 hover:border-surface-border"
                       }`}
                     >
@@ -180,9 +185,18 @@ export const SprintAccordion: React.FC<SprintAccordionProps> = ({
                           <span className="text-sm font-bold text-white">
                             {day.name}
                           </span>
+                          {isDayToday && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-brand-500 text-white tracking-wider shadow-sm animate-pulse">
+                              TODAY
+                            </span>
+                          )}
                         </div>
 
-                        <div className="flex items-center gap-3 text-xs text-slate-400">
+                        <div className="flex items-center gap-2.5 text-xs text-slate-400">
+                          <span className="text-slate-300 font-semibold">
+                            {dayDateStr}
+                          </span>
+                          <span>·</span>
                           <span>{day.meta || "4h 30m"}</span>
                           {daySeconds > 0 && (
                             <span className="text-emerald-400 font-medium">
@@ -193,6 +207,8 @@ export const SprintAccordion: React.FC<SprintAccordionProps> = ({
                             className={`font-mono text-xs px-2 py-0.5 rounded-md ${
                               isDayComplete
                                 ? "bg-emerald-500/20 text-emerald-400 font-bold"
+                                : isDayPast && !isDayComplete
+                                ? "bg-amber-500/20 text-amber-400 font-semibold"
                                 : "bg-surface-subtle text-slate-400"
                             }`}
                           >

@@ -98,3 +98,56 @@ export function calculateDayDate(startDateStr: string, dayNumber: number): strin
   const dayDate = new Date(start.getTime() + daysToAdd * 24 * 60 * 60 * 1000);
   return formatDateDisplay(dayDate);
 }
+
+/**
+ * Returns today's date formatted as "DD Mon YYYY"
+ */
+export function getTodayFormatted(): string {
+  return formatDateDisplay(new Date());
+}
+
+/**
+ * Calculates which Day number (1-indexed) corresponds to today
+ * based on the plan's start date.
+ * E.g., Start Date = 21 Sep 2026.
+ * Today = 21 Sep 2026 -> returns 1 (Day 1)
+ * Today = 22 Sep 2026 -> returns 2 (Day 2)
+ */
+export function getCalendarDayNumber(startDateStr: string): number {
+  const start = parseDateString(startDateStr);
+  const now = new Date();
+
+  // Reset hours to compare purely by calendar day
+  const startZero = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const nowZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const diffMs = nowZero.getTime() - startZero.getTime();
+  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000));
+
+  // If today is on or after start date, day number is diffDays + 1
+  return Math.max(1, diffDays + 1);
+}
+
+/**
+ * Checks if a specific day's date matches today
+ */
+export function isDateToday(dateStr: string): boolean {
+  const target = parseDateString(dateStr);
+  const now = new Date();
+  return (
+    target.getFullYear() === now.getFullYear() &&
+    target.getMonth() === now.getMonth() &&
+    target.getDate() === now.getDate()
+  );
+}
+
+/**
+ * Checks if a specific day's date is before today
+ */
+export function isDatePast(dateStr: string): boolean {
+  const target = parseDateString(dateStr);
+  const now = new Date();
+  const targetZero = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const nowZero = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return targetZero.getTime() < nowZero.getTime();
+}

@@ -21,6 +21,8 @@ interface AdjustPlanModalProps {
   currentTotalDays: number;
   startDateStr: string;
   detectedMissedDays: number;
+  autoCascadeEnabled?: boolean;
+  onToggleAutoCascade?: (enabled: boolean) => void;
   onExtendDuration: (missedDaysToAdd: number) => void;
   onRippleCascade?: (maxTasksPerDay: number) => void;
   onApply65DaySchedule: () => void;
@@ -38,6 +40,8 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
   currentTotalDays = 50,
   startDateStr = "21 Sep 2026",
   detectedMissedDays = 2,
+  autoCascadeEnabled = true,
+  onToggleAutoCascade,
   onExtendDuration,
   onRippleCascade,
   onApply65DaySchedule,
@@ -177,6 +181,32 @@ export const AdjustPlanModal: React.FC<AdjustPlanModalProps> = ({
               Extend plan duration when you miss days or need more breathing room
             </p>
           </div>
+        </div>
+
+        {/* Auto-Cascade Toggle */}
+        <div className="flex items-center justify-between p-3.5 bg-surface-subtle border border-surface-border rounded-2xl">
+          <div className="flex flex-col gap-0.5 pr-2">
+            <span className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-brand-400" />
+              <span>Automatic Daily Cascade</span>
+            </span>
+            <span className="text-[11px] text-slate-400 leading-relaxed">
+              Automatically shifts unfinished tasks downstream every morning at midnight without needing to click any button.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => onToggleAutoCascade && onToggleAutoCascade(!autoCascadeEnabled)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              autoCascadeEnabled ? "bg-brand-600" : "bg-slate-700"
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                autoCascadeEnabled ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
+          </button>
         </div>
 
         {statusMsg && (

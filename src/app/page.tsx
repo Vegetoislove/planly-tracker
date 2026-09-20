@@ -67,6 +67,8 @@ export default function DashboardPage() {
     currentDayIndex >= 0 ? allDays[currentDayIndex] : allDays[0];
   const activeDay = activeDayInfo.day;
   const activeSprintName = activeDayInfo.sprintName;
+  const activeSprint =
+    PLAN_DATA.find((s) => s.id === activeDayInfo.sprintId) || PLAN_DATA[0];
 
   // Handlers
   const handleSelectDay = (dayId: string, sprintId: string) => {
@@ -174,9 +176,9 @@ export default function DashboardPage() {
       />
 
       {/* Main Grid: Sidebar (4 cols) & Workspace (8 cols) */}
-      <div className="max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+      <div className="max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 items-start">
         {/* Sidebar */}
-        <div className="lg:col-span-4">
+        <div className="lg:col-span-4 sticky top-20">
           <Sidebar
             sprints={PLAN_DATA}
             activeDayId={state.activeDayId}
@@ -188,15 +190,17 @@ export default function DashboardPage() {
         </div>
 
         {/* Day Workspace with Integrated Timer */}
-        <div className="lg:col-span-8">
+        <div className="lg:col-span-8 min-w-0">
           <DayWorkspace
             day={activeDay}
             sprintName={activeSprintName}
+            sprintDays={activeSprint.days}
             loggedSecondsToday={loggedSecondsToday}
             completedTasks={state.completedTasks}
             taskNotes={state.taskNotes}
             onToggleTask={handleToggleTask}
             onUpdateNote={handleUpdateNote}
+            onSelectDay={(dayId) => handleSelectDay(dayId, activeSprint.id)}
             onPrevDay={handlePrevDay}
             onNextDay={handleNextDay}
             hasPrevDay={currentDayIndex > 0}

@@ -24,7 +24,7 @@ import { AdjustPlanModal } from "@/components/AdjustPlanModal";
 import { EmailModal } from "@/components/EmailModal";
 import { RevisionModal } from "@/components/RevisionModal";
 import { AiHintModal } from "@/components/AiHintModal";
-import { Sparkles, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Sparkles, ArrowRight, CheckCircle2, GraduationCap, Play } from "lucide-react";
 
 export default function DashboardPage() {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
@@ -101,9 +101,16 @@ export default function DashboardPage() {
 
   // Active sprints (custom rebalanced, duration extended, or default 50-day)
   const sprints: Sprint[] = useMemo(() => {
-    return state.customSprints && state.customSprints.length > 0
-      ? state.customSprints
-      : PLAN_DATA;
+    const aptSprint = PLAN_DATA.find((s) => s.id === "sprint-0");
+    if (!state.customSprints || state.customSprints.length === 0) {
+      return PLAN_DATA;
+    }
+    // If user has customSprints from before aptitude was added, ALWAYS ensure sprint-0 is prepended!
+    const hasAptitude = state.customSprints.some((s) => s.id === "sprint-0");
+    if (!hasAptitude && aptSprint) {
+      return [aptSprint, ...state.customSprints];
+    }
+    return state.customSprints;
   }, [state.customSprints]);
 
   // Flatten all days for sequential tracking
@@ -454,6 +461,40 @@ export default function DashboardPage() {
           totalSprintsCount={dsaSprints.length}
           estCompletionDate={estCompletionDate}
         />
+
+        {/* 2.5 Campus Placement Aptitude Highlight Banner */}
+        <div className="bg-gradient-to-r from-amber-500/15 via-purple-500/15 to-brand-500/15 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+          <div className="flex items-center gap-3.5">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
+              <GraduationCap className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-sm text-white">Campus & Placement Aptitude Fast-Track (12h Masterclasses)</h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500 text-slate-950 uppercase tracking-wider">
+                  NEW
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Quants (5 Days) · Reasoning (6 Days) · Verbal (5 Days) with 43 timestamped YouTube sessions.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setState((prev) => ({
+                ...prev,
+                openSprintId: "sprint-0",
+                activeDayId: "aptitude-day-1",
+              }));
+            }}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-1.5 shrink-0 shadow-md shadow-amber-500/20 cursor-pointer"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Open Aptitude Sprint</span>
+          </button>
+        </div>
 
         {/* 3. TakeUforward Two-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

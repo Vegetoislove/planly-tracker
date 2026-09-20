@@ -1,4 +1,5 @@
-import { AppState } from "./types";
+import { AppState, Sprint } from "./types";
+import { PLAN_DATA } from "@/data/planData";
 
 export const STORAGE_KEY = "planly_next_state_v1";
 
@@ -8,7 +9,7 @@ export const DEFAULT_STATE: AppState = {
   starredTasks: {},
   timeSpentByDay: {},
   taskNotes: {},
-  openSprintId: "sprint-1",
+  openSprintId: "sprint-0",
   remindersActive: false,
   planTitle: "rereckoning",
   startDateStr: "21 Sep 2026",
@@ -20,7 +21,20 @@ export function loadSavedState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
-    return { ...DEFAULT_STATE, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+    
+    // Auto-migration: ensure sprint-0 is present even if user has previous customSprints in localStorage
+    if (parsed.customSprints && Array.isArray(parsed.customSprints)) {
+      const hasApt = parsed.customSprints.some((s: Sprint) => s.id === "sprint-0");
+      if (!hasApt) {
+        const aptSprint = PLAN_DATA.find((s) => s.id === "sprint-0");
+        if (aptSprint) {
+          parsed.customSprints = [aptSprint, ...parsed.customSprints];
+        }
+      }
+    }
+    
+    return { ...DEFAULT_STATE, ...parsed };
   } catch (err) {
     console.error("Error loading localStorage state:", err);
     return DEFAULT_STATE;

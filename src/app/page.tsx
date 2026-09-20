@@ -1,101 +1,225 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+import React, { useState, useEffect, useMemo } from "react";
+import { PLAN_DATA } from "@/data/planData";
+import { AppState, Day } from "@/lib/types";
+import { loadSavedState, saveStateToStorage, DEFAULT_STATE } from "@/lib/store";
+import { Header } from "@/components/Header";
+import { Sidebar } from "@/components/Sidebar";
+import { DayWorkspace } from "@/components/DayWorkspace";
+import { StudyTimer } from "@/components/StudyTimer";
+import { EmailModal } from "@/components/EmailModal";
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+export default function DashboardPage() {
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [state, setState] = useState<AppState>(DEFAULT_STATE);
+  const [emailModalOpen, setEmailModalOpen] = useState<boolean>(false);
+
+  // Load from localStorage on client mount
+  useEffect(() => {
+    const loaded = loadSavedState();
+    setState(loaded);
+    setIsLoaded(true);
+  }, []);
+
+  // Save to localStorage when state changes (after initial mount)
+  useEffect(() => {
+    if (isLoaded) {
+      saveStateToStorage(state);
+    }
+  }, [state, isLoaded]);
+
+  // Flatten all days for sequential navigation
+  const allDays = useMemo(() => {
+    const list: { day: Day; sprintName: string; sprintId: string }[] = [];
+    PLAN_DATA.forEach((sprint) => {
+      sprint.days.forEach((day) => {
+        list.push({ day, sprintName: sprint.name, sprintId: sprint.id });
+      });
+    });
+    return list;
+  }, []);
+
+  // Calculate totals
+  const totalTasks = useMemo(() => {
+    return PLAN_DATA.reduce(
+      (acc, s) => acc + s.days.reduce((dAcc, d) => dAcc + d.tasks.length, 0),
+      0
+    );
+  }, []);
+
+  const completedTasksCount = useMemo(() => {
+    return Object.keys(state.completedTasks).length;
+  }, [state.completedTasks]);
+
+  const totalSecondsStudied = useMemo(() => {
+    return Object.values(state.timeSpentByDay).reduce(
+      (acc, sec) => acc + (sec || 0),
+      0
+    );
+  }, [state.timeSpentByDay]);
+
+  // Current active day object
+  const currentDayIndex = allDays.findIndex(
+    (item) => item.day.id === state.activeDayId
+  );
+  const activeDayInfo =
+    currentDayIndex >= 0 ? allDays[currentDayIndex] : allDays[0];
+  const activeDay = activeDayInfo.day;
+  const activeSprintName = activeDayInfo.sprintName;
+
+  // Handlers
+  const handleSelectDay = (dayId: string, sprintId: string) => {
+    setState((prev) => ({
+      ...prev,
+      activeDayId: dayId,
+      openSprintId: sprintId,
+    }));
+  };
+
+  const handleToggleSprint = (sprintId: string) => {
+    setState((prev) => ({
+      ...prev,
+      openSprintId: prev.openSprintId === sprintId ? null : sprintId,
+    }));
+  };
+
+  const handleToggleTask = (taskId: string) => {
+    setState((prev) => {
+      const updated = { ...prev.completedTasks };
+      if (updated[taskId]) {
+        delete updated[taskId];
+      } else {
+        updated[taskId] = true;
+      }
+      return { ...prev, completedTasks: updated };
+    });
+  };
+
+  const handleUpdateNote = (taskId: string, note: string) => {
+    setState((prev) => ({
+      ...prev,
+      taskNotes: {
+        ...prev.taskNotes,
+        [taskId]: note,
+      },
+    }));
+  };
+
+  const handleLogTime = (dayId: string, secondsToAdd: number) => {
+    setState((prev) => {
+      const current = prev.timeSpentByDay[dayId] || 0;
+      return {
+        ...prev,
+        timeSpentByDay: {
+          ...prev.timeSpentByDay,
+          [dayId]: current + secondsToAdd,
+        },
+      };
+    });
+  };
+
+  const handlePrevDay = () => {
+    if (currentDayIndex > 0) {
+      const prev = allDays[currentDayIndex - 1];
+      handleSelectDay(prev.day.id, prev.sprintId);
+    }
+  };
+
+  const handleNextDay = () => {
+    if (currentDayIndex < allDays.length - 1) {
+      const next = allDays[currentDayIndex + 1];
+      handleSelectDay(next.day.id, next.sprintId);
+    }
+  };
+
+  const handleSaveEmail = (email: string, active: boolean) => {
+    setState((prev) => ({
+      ...prev,
+      userEmail: email,
+      remindersActive: active,
+    }));
+  };
+
+  const handleImportState = (newState: AppState) => {
+    setState(newState);
+  };
+
+  // Prevent hydration layout shift
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-surface-bg flex items-center justify-center text-slate-400">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-semibold tracking-wider uppercase text-slate-500">
+            Loading Planly Tracker...
+          </span>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
+      </div>
+    );
+  }
+
+  const loggedSecondsToday = state.timeSpentByDay[activeDay.id] || 0;
+
+  return (
+    <div className="min-h-screen flex flex-col bg-surface-bg text-slate-100">
+      {/* Top Header */}
+      <Header
+        state={state}
+        totalTasks={totalTasks}
+        completedTasksCount={completedTasksCount}
+        totalSecondsStudied={totalSecondsStudied}
+        onOpenEmailModal={() => setEmailModalOpen(true)}
+        onImportState={handleImportState}
+      />
+
+      {/* Main Grid: Sidebar (4 cols) & Workspace (8 cols) */}
+      <div className="max-w-7xl w-full mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
+        {/* Sidebar */}
+        <div className="lg:col-span-4">
+          <Sidebar
+            sprints={PLAN_DATA}
+            activeDayId={state.activeDayId}
+            openSprintId={state.openSprintId}
+            completedTasks={state.completedTasks}
+            onSelectDay={handleSelectDay}
+            onToggleSprint={handleToggleSprint}
           />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
+        </div>
+
+        {/* Day Workspace with Integrated Timer */}
+        <div className="lg:col-span-8">
+          <DayWorkspace
+            day={activeDay}
+            sprintName={activeSprintName}
+            loggedSecondsToday={loggedSecondsToday}
+            completedTasks={state.completedTasks}
+            taskNotes={state.taskNotes}
+            onToggleTask={handleToggleTask}
+            onUpdateNote={handleUpdateNote}
+            onPrevDay={handlePrevDay}
+            onNextDay={handleNextDay}
+            hasPrevDay={currentDayIndex > 0}
+            hasNextDay={currentDayIndex < allDays.length - 1}
+            timerComponent={
+              <StudyTimer
+                activeDayId={activeDay.id}
+                activeDayName={activeDay.name}
+                loggedSecondsToday={loggedSecondsToday}
+                onLogTime={handleLogTime}
+              />
+            }
           />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+        </div>
+      </div>
+
+      {/* Email Subscription Modal */}
+      <EmailModal
+        isOpen={emailModalOpen}
+        initialEmail={state.userEmail || ""}
+        onClose={() => setEmailModalOpen(false)}
+        onSaveEmail={handleSaveEmail}
+      />
     </div>
   );
 }

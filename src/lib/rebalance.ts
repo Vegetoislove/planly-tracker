@@ -25,6 +25,7 @@ export function autoRebalancePlan(
   }
   const flatDays: DayRef[] = [];
   sprints.forEach((sprint, sprintIdx) => {
+    if (sprint.id === "sprint-0" || sprint.isSpecialTrack) return;
     sprint.days.forEach((day, dayIdx) => {
       flatDays.push({ sprintIdx, dayIdx, day });
     });
@@ -207,7 +208,10 @@ export function detectMissedDays(
   activeDayId: string
 ): number {
   const flatDays: Day[] = [];
-  sprints.forEach((s) => s.days.forEach((d) => flatDays.push(d)));
+  sprints.forEach((s) => {
+    if (s.id === "sprint-0" || s.isSpecialTrack) return;
+    s.days.forEach((d) => flatDays.push(d));
+  });
 
   const activeIdx = flatDays.findIndex((d) => d.id === activeDayId);
   if (activeIdx <= 0) return 0;
@@ -246,6 +250,7 @@ export function extendPlanDuration(
   // 1. Gather any incomplete tasks from past days
   const flatDays: { sprintIdx: number; day: Day }[] = [];
   sprints.forEach((sprint, sprintIdx) => {
+    if (sprint.id === "sprint-0" || sprint.isSpecialTrack) return;
     sprint.days.forEach((day) => {
       flatDays.push({ sprintIdx, day });
     });
@@ -307,9 +312,10 @@ export function extendPlanDuration(
     });
   }
 
-  // Renumber all global days across all sprints consecutively
+  // Renumber all global days across all sprints consecutively (skipping sprint-0)
   let currentGlobalDay = 0;
   sprints.forEach((sprint) => {
+    if (sprint.id === "sprint-0" || sprint.isSpecialTrack) return;
     sprint.days.forEach((day) => {
       currentGlobalDay++;
       day.globalDay = currentGlobalDay;

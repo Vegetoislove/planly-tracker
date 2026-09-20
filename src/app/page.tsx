@@ -130,39 +130,49 @@ export default function DashboardPage() {
   const activeDay = activeDayInfo.day;
   const activeSprint = activeDayInfo.sprint;
 
-  // Calculate statistics for StatsOverview
-  const totalDays = allDays.length;
+  // Core DSA days (Sprints 1 through 8, excluding special aptitude track)
+  const dsaDays = useMemo(() => {
+    return allDays.filter((item) => item.sprint.id !== "sprint-0" && !item.sprint.isSpecialTrack);
+  }, [allDays]);
 
-  // Dynamically compute completion date based on start date + total days
+  const totalDsaDays = dsaDays.length || 50;
+
+  // Dynamically compute completion date based on start date + total DSA days
   const estCompletionDate = useMemo(() => {
-    return calculateCompletionDate(state.startDateStr || "21 Sep 2026", totalDays);
-  }, [state.startDateStr, totalDays]);
+    return calculateCompletionDate(state.startDateStr || "21 Sep 2026", totalDsaDays);
+  }, [state.startDateStr, totalDsaDays]);
 
   // Dynamically compute scheduled date for the currently selected day
+  const isSelectedDayAptitude = activeDay.id.startsWith("aptitude-") || activeSprint.id === "sprint-0";
   const scheduledDateForActiveDay = useMemo(() => {
+    if (isSelectedDayAptitude) return "Placement Track";
     return calculateDayDate(state.startDateStr || "21 Sep 2026", activeDay.globalDay);
-  }, [state.startDateStr, activeDay.globalDay]);
+  }, [isSelectedDayAptitude, state.startDateStr, activeDay.globalDay]);
 
   // Detect missed days before active day
   const detectedMissedDays = useMemo(() => {
     return detectMissedDays(sprints, state.completedTasks, state.activeDayId);
   }, [sprints, state.completedTasks, state.activeDayId]);
 
-  const completedDays = useMemo(() => {
-    return allDays.filter((item) => {
+  const completedDsaDays = useMemo(() => {
+    return dsaDays.filter((item) => {
       const tasks = item.day.tasks;
       if (tasks.length === 0) return false;
       return tasks.every((t) => !!state.completedTasks[t.id]);
     }).length;
-  }, [allDays, state.completedTasks]);
+  }, [dsaDays, state.completedTasks]);
+
+  const dsaSprints = useMemo(() => {
+    return sprints.filter((s) => s.id !== "sprint-0" && !s.isSpecialTrack);
+  }, [sprints]);
 
   const completedSprintsCount = useMemo(() => {
-    return sprints.filter((sprint) => {
+    return dsaSprints.filter((sprint) => {
       const allSprintTasks = sprint.days.flatMap((d) => d.tasks);
       if (allSprintTasks.length === 0) return false;
       return allSprintTasks.every((t) => !!state.completedTasks[t.id]);
     }).length;
-  }, [sprints, state.completedTasks]);
+  }, [dsaSprints, state.completedTasks]);
 
   const totalSecondsStudied = useMemo(() => {
     return Object.values(state.timeSpentByDay).reduce(
@@ -178,20 +188,30 @@ export default function DashboardPage() {
   // Backlog tasks from days prior to activeDay (missed tasks)
   const missedTasks = useMemo(() => {
     const missed: (Task & { originDay: string; originSprint: string })[] = [];
-    for (let i = 0; i < activeDayIndex; i++) {
-      const dayRef = allDays[i];
-      dayRef.day.tasks.forEach((t) => {
-        if (!state.completedTasks[t.id]) {
-          missed.push({
-            ...t,
-            originDay: dayRef.day.name,
-            originSprint: dayRef.sprint.name,
-          });
-        }
-      });
+    const isSpecial = activeSprint.id === "sprint-0" || activeSprint.isSpecialTrack;
+    const relevantDays = allDays.filter((item) =>
+      isSpecial
+        ? item.sprint.id === "sprint-0" || item.sprint.isSpecialTrack
+        : item.sprint.id !== "sprint-0" && !item.sprint.isSpecialTrack
+    );
+    const activeRelIndex = relevantDays.findIndex((item) => item.day.id === state.activeDayId);
+
+    if (activeRelIndex > 0) {
+      for (let i = 0; i < activeRelIndex; i++) {
+        const dayRef = relevantDays[i];
+        dayRef.day.tasks.forEach((t) => {
+          if (!state.completedTasks[t.id]) {
+            missed.push({
+              ...t,
+              originDay: dayRef.day.name,
+              originSprint: dayRef.sprint.name,
+            });
+          }
+        });
+      }
     }
     return missed;
-  }, [allDays, activeDayIndex, state.completedTasks]);
+  }, [allDays, activeSprint, state.activeDayId, state.completedTasks]);
 
   // Handlers
   const handleSelectDay = (day: Day, sprint: Sprint) => {
@@ -427,11 +447,11 @@ export default function DashboardPage() {
 
         {/* 2. Top Stats Overview (4 TakeUforward Cards with Dynamic Completion Date & Duration) */}
         <StatsOverview
-          completedDays={completedDays}
-          totalDays={totalDays}
+          completedDays={completedDsaDays}
+          totalDays={totalDsaDays}
           totalSecondsStudied={totalSecondsStudied}
           completedSprintsCount={completedSprintsCount}
-          totalSprintsCount={sprints.length}
+          totalSprintsCount={dsaSprints.length}
           estCompletionDate={estCompletionDate}
         />
 
@@ -477,7 +497,7 @@ export default function DashboardPage() {
       <AdjustPlanModal
         isOpen={adjustPlanOpen}
         onClose={() => setAdjustPlanOpen(false)}
-        currentTotalDays={totalDays}
+        currentTotalDays={totalDsaDays}
         startDateStr={state.startDateStr || "21 Sep 2026"}
         detectedMissedDays={detectedMissedDays}
         autoCascadeEnabled={state.autoCascadeEnabled !== false}

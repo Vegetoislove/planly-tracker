@@ -241,7 +241,7 @@ export const RightRailPreview: React.FC<RightRailPreviewProps> = ({
               >
                 <div className="flex items-center gap-1.5 min-w-0 flex-1">
                   <a
-                    href={searchUrl}
+                    href={task.videoUrl || searchUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className={`min-w-0 truncate leading-snug hover:text-brand-400 hover:underline flex items-center gap-1.5 ${
@@ -249,6 +249,7 @@ export const RightRailPreview: React.FC<RightRailPreviewProps> = ({
                         ? "line-through text-slate-500 font-normal"
                         : "text-slate-300 font-medium"
                     }`}
+                    title={task.videoUrl ? "Watch on YouTube at timestamp" : "Search problem"}
                   >
                     <span className="truncate">{task.title.replace(/^🔄\s*/, "")}</span>
                     {task.title.includes("🔄") && (
@@ -260,6 +261,31 @@ export const RightRailPreview: React.FC<RightRailPreviewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {task.tag && (
+                    <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold shrink-0 ${
+                      task.tag === "Quants"
+                        ? "bg-amber-500/20 text-amber-300"
+                        : task.tag === "Reasoning"
+                        ? "bg-blue-500/20 text-blue-300"
+                        : "bg-purple-500/20 text-purple-300"
+                    }`}>
+                      {task.tag}
+                    </span>
+                  )}
+
+                  {task.videoUrl && (
+                    <a
+                      href={task.videoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Watch video on YouTube at timestamp"
+                      className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 transition flex items-center gap-1 shrink-0"
+                    >
+                      <Play className="w-2.5 h-2.5 fill-red-400" />
+                      <span>Watch</span>
+                    </a>
+                  )}
+
                   {onOpenAiHint && (
                     <button
                       type="button"

@@ -2,6 +2,8 @@ export interface Task {
   id: string;
   title: string;
   time: string;
+  videoUrl?: string;
+  tag?: string;
 }
 
 export interface Day {
@@ -16,6 +18,8 @@ export interface Sprint {
   id: string;
   name: string;
   meta: string;
+  badge?: string;
+  isSpecialTrack?: boolean;
   days: Day[];
 }
 

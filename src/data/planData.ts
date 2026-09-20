@@ -2,6 +2,8 @@ export interface Task {
   id: string;
   title: string;
   time: string;
+  videoUrl?: string;
+  tag?: string;
 }
 
 export interface Day {
@@ -16,10 +18,449 @@ export interface Sprint {
   id: string;
   name: string;
   meta: string;
+  badge?: string;
+  isSpecialTrack?: boolean;
   days: Day[];
 }
 
 export const PLAN_DATA: Sprint[] = [
+  {
+    "id": "sprint-0",
+    "name": "Sprint 0: Aptitude Fast-Track (Quants · Reasoning · Verbal)",
+    "meta": "•Speedrun Track · Est. 33h · 16 Sessions (@ ~2h/day)",
+    "badge": "Placement Special",
+    "days": [
+      {
+        "id": "aptitude-day-1",
+        "globalDay": 1,
+        "name": "Aptitude Day 1: Quants Foundations",
+        "meta": "Est. 2h 08m",
+        "tasks": [
+          {
+            "id": "apt-q-1",
+            "title": "Aptitude: TCS Percentage & Calculation Tricks",
+            "time": "Est. 48 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=139s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-2",
+            "title": "Aptitude: TCS Elementary Statistics (Mean, Median, Mode, Variance)",
+            "time": "Est. 52 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=3026s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-3",
+            "title": "Aptitude: TCS Arithmetic Operations & Short Methods",
+            "time": "Est. 28 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=8607s",
+            "tag": "Quants"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-2",
+        "globalDay": 2,
+        "name": "Aptitude Day 2: Number Theory & Algebra",
+        "meta": "Est. 2h 30m",
+        "tasks": [
+          {
+            "id": "apt-q-4",
+            "title": "Aptitude: TCS Number System Fundamentals",
+            "time": "Est. 40 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=6181s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-5",
+            "title": "Aptitude: TCS Divisibility Rules & Remainder Theorems",
+            "time": "Est. 24 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=35309s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-6",
+            "title": "Aptitude: TCS LCM & HCF High-Yield Applications",
+            "time": "Est. 1h 08m",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=23988s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-7",
+            "title": "Aptitude: TCS Linear Equations & Word Problems",
+            "time": "Est. 18 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=28108s",
+            "tag": "Quants"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-3",
+        "globalDay": 3,
+        "name": "Aptitude Day 3: Commercial Math & DI",
+        "meta": "Est. 2h 13m",
+        "tasks": [
+          {
+            "id": "apt-q-8",
+            "title": "Aptitude: TCS Data Interpretation (Tables, Bar Graphs, Pie Charts)",
+            "time": "Est. 29 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=10333s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-9",
+            "title": "Aptitude: TCS Geometry & Mensuration Formulae",
+            "time": "Est. 33 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=12105s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-10",
+            "title": "Aptitude: TCS Profit, Loss & Discount",
+            "time": "Est. 39 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=14104s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-11",
+            "title": "Aptitude: TCS Ratio & Proportion",
+            "time": "Est. 32 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=16482s",
+            "tag": "Quants"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-4",
+        "globalDay": 4,
+        "name": "Aptitude Day 4: Work, Speed & Distance",
+        "meta": "Est. 2h 04m",
+        "tasks": [
+          {
+            "id": "apt-q-12",
+            "title": "Aptitude: TCS Time & Work (Efficiency & Pipes/Cisterns)",
+            "time": "Est. 36 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=18447s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-13",
+            "title": "Aptitude: TCS Simplification & BODMAS",
+            "time": "Est. 30 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=20648s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-14",
+            "title": "Aptitude: TCS Speed, Time, Distance & Trains",
+            "time": "Est. 25 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=22460s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-15",
+            "title": "Aptitude: TCS Partnership & Profit Sharing",
+            "time": "Est. 22 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=36764s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-16",
+            "title": "Aptitude: TCS Averages & Weighted Means",
+            "time": "Est. 11 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=34596s",
+            "tag": "Quants"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-5",
+        "globalDay": 5,
+        "name": "Aptitude Day 5: Advanced Quants & P&C",
+        "meta": "Est. 1h 28m",
+        "tasks": [
+          {
+            "id": "apt-q-17",
+            "title": "Aptitude: TCS Mixtures & Alligations",
+            "time": "Est. 18 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=29234s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-18",
+            "title": "Aptitude: TCS Permutations, Combinations & Probability",
+            "time": "Est. 28 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=30327s",
+            "tag": "Quants"
+          },
+          {
+            "id": "apt-q-19",
+            "title": "Aptitude: TCS Simple & Compound Interest (SI/CI Tricks)",
+            "time": "Est. 42 min",
+            "videoUrl": "https://www.youtube.com/watch?v=S-Ji7aayH3A&t=32044s",
+            "tag": "Quants"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-6",
+        "globalDay": 6,
+        "name": "Aptitude Day 6: Logical Deduction & Deductive Reasoning",
+        "meta": "Est. 1h 59m",
+        "tasks": [
+          {
+            "id": "apt-r-1",
+            "title": "Reasoning: TCS Logical Deduction (Deductive Reasoning Foundations)",
+            "time": "Est. 1h 59m",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=176s",
+            "tag": "Reasoning"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-7",
+        "globalDay": 7,
+        "name": "Aptitude Day 7: Series & Data Sufficiency",
+        "meta": "Est. 1h 48m",
+        "tasks": [
+          {
+            "id": "apt-r-2",
+            "title": "Reasoning: TCS Letter, Number & Alphanumeric Series",
+            "time": "Est. 1h 19m",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=7366s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-3",
+            "title": "Reasoning: TCS Data Sufficiency Statements",
+            "time": "Est. 29 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=12143s",
+            "tag": "Reasoning"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-8",
+        "globalDay": 8,
+        "name": "Aptitude Day 8: Patterns & Syllogisms",
+        "meta": "Est. 2h 03m",
+        "tasks": [
+          {
+            "id": "apt-r-4",
+            "title": "Reasoning: TCS Pattern Recognition & Figure Series",
+            "time": "Est. 1h 06m",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=13930s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-5",
+            "title": "Reasoning: TCS Syllogisms (Venn Diagrams & Deduction)",
+            "time": "Est. 57 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=17919s",
+            "tag": "Reasoning"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-9",
+        "globalDay": 9,
+        "name": "Aptitude Day 9: Relations & Visual Reasoning",
+        "meta": "Est. 1h 50m",
+        "tasks": [
+          {
+            "id": "apt-r-6",
+            "title": "Reasoning: TCS Blood Relations (Coded & Direct)",
+            "time": "Est. 47 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=21343s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-7",
+            "title": "Reasoning: TCS Venn Diagrams Representation",
+            "time": "Est. 27 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=28309s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-8",
+            "title": "Reasoning: TCS Data Arrangement Basics",
+            "time": "Est. 7 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=24181s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-9",
+            "title": "Reasoning: TCS Visual Reasoning & Paper Folding/Cutting",
+            "time": "Est. 29 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=24616s",
+            "tag": "Reasoning"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-10",
+        "globalDay": 10,
+        "name": "Aptitude Day 10: Clocks, Calendars & Coding",
+        "meta": "Est. 2h 06m",
+        "tasks": [
+          {
+            "id": "apt-r-10",
+            "title": "Reasoning: TCS Spatial Reasoning & Cubes/Dice",
+            "time": "Est. 21 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=26388s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-11",
+            "title": "Reasoning: TCS Attention to Detail & Comparison",
+            "time": "Est. 10 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=27658s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-12",
+            "title": "Reasoning: TCS Calendars & Clocks Problem Solving",
+            "time": "Est. 59 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=29958s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-13",
+            "title": "Reasoning: TCS Coding & Decoding (Shift & Matrix)",
+            "time": "Est. 36 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=33555s",
+            "tag": "Reasoning"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-11",
+        "globalDay": 11,
+        "name": "Aptitude Day 11: Directions & Arrangements",
+        "meta": "Est. 1h 31m",
+        "tasks": [
+          {
+            "id": "apt-r-14",
+            "title": "Reasoning: TCS Directions & Distance Sense",
+            "time": "Est. 43 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=35745s",
+            "tag": "Reasoning"
+          },
+          {
+            "id": "apt-r-15",
+            "title": "Reasoning: TCS Seating Arrangement (Linear & Circular)",
+            "time": "Est. 48 min",
+            "videoUrl": "https://www.youtube.com/watch?v=sWJfscVkhLI&t=38331s",
+            "tag": "Reasoning"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-12",
+        "globalDay": 12,
+        "name": "Aptitude Day 12: Vocabulary & Agreement",
+        "meta": "Est. 1h 59m",
+        "tasks": [
+          {
+            "id": "apt-v-1",
+            "title": "Verbal: Vocabulary, Synonyms & Antonyms in Context",
+            "time": "Est. 1h 04m",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=5s",
+            "tag": "Verbal"
+          },
+          {
+            "id": "apt-v-2",
+            "title": "Verbal: Subject Verb Agreement Rules",
+            "time": "Est. 41 min",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=37086s",
+            "tag": "Verbal"
+          },
+          {
+            "id": "apt-v-3",
+            "title": "Verbal: Articles (A, An, The) Common Traps",
+            "time": "Est. 14 min",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=32282s",
+            "tag": "Verbal"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-13",
+        "globalDay": 13,
+        "name": "Aptitude Day 13: Error Spotting & Correction",
+        "meta": "Est. 1h 53m",
+        "tasks": [
+          {
+            "id": "apt-v-4",
+            "title": "Verbal: Sentence Correction & Error Spotting (High-Yield Grammar)",
+            "time": "Est. 1h 53m",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=3886s",
+            "tag": "Verbal"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-14",
+        "globalDay": 14,
+        "name": "Aptitude Day 14: Para Jumbles & Parts of Speech",
+        "meta": "Est. 2h 34m",
+        "tasks": [
+          {
+            "id": "apt-v-5",
+            "title": "Verbal: Para Jumbles (Sentence Re-arrangement Techniques)",
+            "time": "Est. 1h 29m",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=10719s",
+            "tag": "Verbal"
+          },
+          {
+            "id": "apt-v-6",
+            "title": "Verbal: Nouns & Pronouns Rules and Cases",
+            "time": "Est. 1h 05m",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=33149s",
+            "tag": "Verbal"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-15",
+        "globalDay": 15,
+        "name": "Aptitude Day 15: Sentence Completion & RC",
+        "meta": "Est. 2h 30m",
+        "tasks": [
+          {
+            "id": "apt-v-7",
+            "title": "Verbal: Sentence Completion & Fill in the Blanks",
+            "time": "Est. 1h 22m",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=16105s",
+            "tag": "Verbal"
+          },
+          {
+            "id": "apt-v-8",
+            "title": "Verbal: Reading Comprehension & Cloze Test Strategies",
+            "time": "Est. 1h 08m",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=28163s",
+            "tag": "Verbal"
+          }
+        ]
+      },
+      {
+        "id": "aptitude-day-16",
+        "globalDay": 16,
+        "name": "Aptitude Day 16: Analogies & Substitution",
+        "meta": "Est. 1h 58m",
+        "tasks": [
+          {
+            "id": "apt-v-9",
+            "title": "Verbal: One Word Substitution & Verbal Analogies",
+            "time": "Est. 1h 58m",
+            "videoUrl": "https://www.youtube.com/watch?v=GDAVuWg0G8M&t=21025s",
+            "tag": "Verbal"
+          }
+        ]
+      }
+    ]
+  },
   {
     "id": "sprint-1",
     "name": "Sprint 1",

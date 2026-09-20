@@ -42,6 +42,7 @@ export function rippleCascadePlan(
   }
   const flatDays: DayRef[] = [];
   sprints.forEach((sprint, sprintIdx) => {
+    if (sprint.id === "sprint-0" || sprint.isSpecialTrack) return;
     sprint.days.forEach((day, dayIdx) => {
       flatDays.push({ sprintIdx, dayIdx, day });
     });
